@@ -1,163 +1,292 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse, urldefrag
-from pathlib import Path
+
 from collections import deque
+from ipaddress import ip_address
+from urllib.parse import urljoin, urldefrag, urlparse
+import socket
 import time
 
-BASE_URL = "https://www.lakshacare.com/"
-OUTPUT_FILE = Path("data.txt")
+import requests
+from bs4 import BeautifulSoup
 
-MAX_PAGES = 40
-REQUEST_TIMEOUT = 20
-DELAY = 0.5
+
+DEFAULT_MAX_PAGES = 1000
+DEFAULT_TIMEOUT = 15
+DEFAULT_DELAY = 0.5
+
+MAX_RUNTIME_SECONDS = 3600
+MAX_TOTAL_CONTENT_CHARS = 10_000_000
+MAX_RESPONSE_BYTES = 5_000_000
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Linux; Android 10; Mobile) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Mobile Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,"
-        "application/xml;q=0.9,*/*;q=0.8"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": "Site2ChatBot/1.0 (website content indexing)"
 }
 
-DOMAIN = urlparse(BASE_URL).netloc
+SKIP_EXTENSIONS = (
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp",
+    ".svg", ".zip", ".mp4", ".mp3", ".css", ".js",
+    ".ico", ".woff", ".woff2", ".ttf",
+)
 
-visited = set()
-pages = []
-queue = deque([BASE_URL])
 
+def validate_website_url(url: str) -> str:
+    """Validate a public HTTP(S) website URL."""
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("Website URL is required.")
 
-def normalize_url(url):
-    url, _ = urldefrag(url)
+    url = url.strip()
     parsed = urlparse(url)
 
     if parsed.scheme not in ("http", "https"):
-        return None
+        raise ValueError("Only HTTP and HTTPS URLs are allowed.")
 
-    if parsed.netloc.lower() != DOMAIN.lower():
-        return None
+    if not parsed.hostname:
+        raise ValueError("A valid hostname is required.")
 
-    if parsed.path.lower().endswith(
-        (".pdf", ".jpg", ".jpeg", ".png", ".gif",
-         ".webp", ".svg", ".zip", ".mp4", ".mp3")
+    if parsed.username or parsed.password:
+        raise ValueError("URLs containing credentials are not allowed.")
+
+    hostname = parsed.hostname.lower()
+
+    if (
+        hostname == "localhost"
+        or hostname.endswith((".localhost", ".local", ".internal"))
     ):
+        raise ValueError("Local and internal hostnames are not allowed.")
+
+    try:
+        addresses = socket.getaddrinfo(
+            hostname,
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+            type=socket.SOCK_STREAM,
+        )
+    except socket.gaierror as exc:
+        raise ValueError("Website hostname could not be resolved.") from exc
+
+    for address in addresses:
+        ip = ip_address(address[4][0])
+
+        if not ip.is_global:
+            raise ValueError("Private or non-public IP addresses are not allowed.")
+
+    return urldefrag(url).url
+
+
+def normalize_url(url: str, allowed_domain: str) -> str | None:
+    """Accept supported HTTP(S) URLs from the original hostname."""
+    url, _ = urldefrag(url)
+    parsed = urlparse(url)
+
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return None
+
+    if parsed.hostname.lower() != allowed_domain.lower():
+        return None
+
+    if parsed.username or parsed.password:
+        return None
+
+    if parsed.port not in (None, 80, 443):
+        return None
+
+    if parsed.path.lower().endswith(SKIP_EXTENSIONS):
         return None
 
     return url
 
 
-def extract_text(soup):
+def extract_text(html: str) -> tuple[str, str, BeautifulSoup]:
+    """Extract title, readable text, and parsed HTML."""
+    soup = BeautifulSoup(html, "html.parser")
+
+    title = (
+        soup.title.get_text(" ", strip=True)
+        if soup.title
+        else "Untitled page"
+    )
+
     for tag in soup([
         "script", "style", "noscript", "svg",
-        "iframe", "nav", "footer"
+        "iframe", "nav", "footer", "header",
     ]):
         tag.decompose()
 
     main = soup.find("main") or soup.find("article") or soup.body
 
-    if main:
-        return main.get_text("\n", strip=True)
+    text = (
+        main.get_text("\n", strip=True)
+        if main
+        else soup.get_text("\n", strip=True)
+    )
 
-    return soup.get_text("\n", strip=True)
-
-
-def crawl_page(url, session):
-    try:
-        response = session.get(
-            url,
-            timeout=REQUEST_TIMEOUT,
-            allow_redirects=True
-        )
-
-        print("Status:", response.status_code, "|", url)
-
-        response.raise_for_status()
-
-        content_type = response.headers.get("Content-Type", "")
-
-        if "text/html" not in content_type.lower():
-            print("Skipped non-HTML page:", url)
-            return
-
-        final_url = normalize_url(response.url)
-
-        if not final_url:
-            return
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        title = (
-            soup.title.get_text(" ", strip=True)
-            if soup.title else url
-        )
-
-        text = extract_text(soup)
-
-        if len(text.strip()) >= 50:
-            pages.append(
-                f"SOURCE: {final_url}\n"
-                f"TITLE: {title}\n\n"
-                f"{text}"
-            )
-            print("Extracted:", title)
-
-        for link in soup.find_all("a", href=True):
-            next_url = normalize_url(
-                urljoin(final_url, link["href"])
-            )
-
-            if next_url and next_url not in visited:
-                queue.append(next_url)
-
-    except requests.RequestException as error:
-        print("Request failed:", url)
-        print(error)
-
-    except Exception as error:
-        print("Extraction failed:", url)
-        print(error)
+    return title, text, soup
 
 
-def main():
-    session = requests.Session()
-    session.headers.update(HEADERS)
+def crawl_website(
+    website_url: str,
+    max_pages: int | None = DEFAULT_MAX_PAGES,
+    timeout: int = DEFAULT_TIMEOUT,
+    delay: float = DEFAULT_DELAY,
+    max_runtime: int = MAX_RUNTIME_SECONDS,
+) -> list[dict[str, str]]:
+    """
+    Crawl a public website.
 
-    while queue and len(visited) < MAX_PAGES:
-        url = queue.popleft()
+    max_pages=None means no fixed page-count limit.
+    Crawling still stops at the runtime or content safety limit.
 
-        if url in visited:
-            continue
+    Returns a list of dictionaries containing url, title and content.
+    """
+    if max_pages is not None and max_pages < 1:
+        raise ValueError("max_pages must be positive or None.")
 
-        visited.add(url)
+    if not 1 <= timeout <= 60:
+        raise ValueError("timeout must be between 1 and 60 seconds.")
 
-        print(f"\n[{len(visited)}/{MAX_PAGES}] Fetching page")
+    if not 0 <= delay <= 10:
+        raise ValueError("delay must be between 0 and 10 seconds.")
 
-        crawl_page(url, session)
+    if max_runtime < 1:
+        raise ValueError("max_runtime must be positive.")
 
-        time.sleep(DELAY)
+    start_url = validate_website_url(website_url)
+    parsed_start = urlparse(start_url)
+    domain = parsed_start.hostname
 
-    if not pages:
-        print("\nNo pages were extracted.")
-        print("The existing data.txt has not been modified.")
-        print("Check the website response or use browser-based extraction.")
-        return
+    queue = deque([start_url])
+    queued = {start_url}
+    visited = set()
+    pages = []
+    total_chars = 0
+    started_at = time.monotonic()
 
-    output = "\n\n" + ("=" * 60) + "\n\n"
-    output = output.join(pages)
+    with requests.Session() as session:
+        session.headers.update(HEADERS)
 
-    OUTPUT_FILE.write_text(output, encoding="utf-8")
+        while queue:
+            if max_pages is not None and len(visited) >= max_pages:
+                break
 
-    print("\nExtraction completed.")
-    print("Pages visited:", len(visited))
-    print("Pages extracted:", len(pages))
-    print("Output:", OUTPUT_FILE.resolve())
-    print("Characters:", len(output))
+            if time.monotonic() - started_at >= max_runtime:
+                print("Stopped: maximum runtime reached.")
+                break
 
+            if total_chars >= MAX_TOTAL_CONTENT_CHARS:
+                print("Stopped: maximum content limit reached.")
+                break
 
-if __name__ == "__main__":
-    main()
+            url = queue.popleft()
+
+            if url in visited:
+                continue
+
+            visited.add(url)
+
+            try:
+                with session.get(
+                    url,
+                    timeout=timeout,
+                    allow_redirects=False,
+                    stream=True,
+                ) as response:
+                    if response.is_redirect:
+                        location = response.headers.get("Location")
+
+                        if location:
+                            redirect_url = urljoin(url, location)
+                            normalized = normalize_url(
+                                redirect_url, domain
+                            )
+
+                            if normalized and normalized not in queued:
+                                queue.append(normalized)
+                                queued.add(normalized)
+
+                        continue
+
+                    response.raise_for_status()
+
+                    content_type = response.headers.get(
+                        "Content-Type", ""
+                    ).lower()
+
+                    if "text/html" not in content_type:
+                        continue
+
+                    content_length = response.headers.get("Content-Length")
+
+                    if content_length:
+                        try:
+                            if int(content_length) > MAX_RESPONSE_BYTES:
+                                print("Skipped oversized page:", url)
+                                continue
+                        except ValueError:
+                            pass
+
+                    body = bytearray()
+
+                    for chunk in response.iter_content(chunk_size=65536):
+                        if time.monotonic() - started_at >= max_runtime:
+                            print("Stopped: maximum runtime reached.")
+                            break
+
+                        if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
+                            print("Skipped oversized page:", url)
+                            body.clear()
+                            break
+
+                        body.extend(chunk)
+
+                    if not body:
+                        continue
+
+                    encoding = response.encoding or "utf-8"
+                    html = bytes(body).decode(encoding, errors="replace")
+                    final_url = normalize_url(response.url, domain)
+
+                    if not final_url:
+                        continue
+
+                    title, content, soup = extract_text(html)
+
+                    if len(content.strip()) >= 50:
+                        remaining = (
+                            MAX_TOTAL_CONTENT_CHARS - total_chars
+                        )
+                        content = content[:remaining]
+
+                        pages.append({
+                            "url": final_url,
+                            "title": title,
+                            "content": content,
+                        })
+
+                        total_chars += len(content)
+
+                    for link in soup.find_all("a", href=True):
+                        candidate = urljoin(final_url, link["href"])
+                        normalized = normalize_url(candidate, domain)
+
+                        if normalized and normalized not in queued:
+                            queue.append(normalized)
+                            queued.add(normalized)
+
+                    print(
+                        f"Visited {len(visited)} pages | "
+                        f"Extracted {len(pages)} | {final_url}"
+                    )
+
+            except requests.RequestException as exc:
+                print(f"Could not fetch {url}: {exc}")
+
+            except (ValueError, OSError) as exc:
+                print(f"Could not process {url}: {exc}")
+
+            if queue and delay:
+                time.sleep(delay)
+
+    print(
+        f"Crawl finished. Visited: {len(visited)}, "
+        f"extracted: {len(pages)}, characters: {total_chars}"
+    )
+
+    return pages
