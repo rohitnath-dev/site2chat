@@ -22,3 +22,5 @@ beautifulsoup4
 
 SQLAlchemy
 psycopg[binary]
+pgvector
+alembic
