@@ -19,3 +19,6 @@ requests
 python-dotenv
 
 beautifulsoup4
+
+SQLAlchemy
+psycopg[binary]
