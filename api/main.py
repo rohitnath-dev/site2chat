@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from config import settings
+from core.config import settings
 from api.health import router as health_router
 from api.chatbots import router as chatbots_router
 from api.chat import router as chat_router
