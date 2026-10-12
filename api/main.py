@@ -1,0 +1,25 @@
+from fastapi import FastAPI
+
+from config import settings
+from api.health import router as health_router
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    debug=settings.DEBUG,
+    description="Backend API for site2chat.",
+)
+
+app.include_router(
+    health_router,
+    prefix=settings.API_V1_PREFIX,
+)
+
+
+@app.get("/", tags=["Root"])
+async def root() -> dict[str, str]:
+    return {
+        "project": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "running",
+    }
