@@ -160,6 +160,20 @@ def list_conversations(
     return list(db.scalars(statement).all())
 
 
+
+def get_conversation_by_session(
+    db: Session,
+    *,
+    chatbot_id: UUID,
+    session_id: str,
+) -> Conversation | None:
+    statement = select(Conversation).where(
+        Conversation.chatbot_id == chatbot_id,
+        Conversation.session_id == session_id,
+    )
+    return db.scalar(statement)
+
+
 # -------------------------
 # MESSAGES
 # -------------------------
