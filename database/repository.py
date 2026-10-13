@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database.models import (
+    UserLLMCredential,
     Chatbot,
     WebsitePage,
     Conversation,
@@ -21,11 +22,13 @@ def create_chatbot(
     *,
     name: str,
     website_url: str,
+    owner_id: str,
     description: str | None = None,
 ) -> Chatbot:
     chatbot = Chatbot(
         name=name,
         website_url=website_url,
+        owner_id=owner_id,
         description=description,
     )
     db.add(chatbot)
@@ -34,9 +37,45 @@ def create_chatbot(
     return chatbot
 
 
-def get_chatbot(db: Session, chatbot_id: UUID) -> Chatbot | None:
-    return db.get(Chatbot, chatbot_id)
+def get_chatbot(
+    db: Session,
+    chatbot_id: UUID,
+    *,
+    owner_id: str,
+) -> Chatbot | None:
+    """Get a chatbot only when it belongs to the supplied owner."""
+    statement = select(Chatbot).where(
+        Chatbot.id == chatbot_id,
+        Chatbot.owner_id == owner_id,
+    )
+    return db.scalar(statement)
 
+
+def get_chatbot_by_id(db: Session, chatbot_id: UUID) -> Chatbot | None:
+    """Internal lookup for flows intentionally addressed by internal UUID."""
+    return db.scalar(select(Chatbot).where(Chatbot.id == chatbot_id))
+
+def update_chatbot_llm_settings(
+    db: Session,
+    chatbot_id: UUID,
+    *,
+    owner_id: str,
+    llm_provider: str,
+    llm_model: str,
+) -> Chatbot | None:
+    statement = select(Chatbot).where(
+        Chatbot.id == chatbot_id,
+        Chatbot.owner_id == owner_id,
+    )
+    chatbot = db.scalar(statement)
+    if chatbot is None:
+        return None
+
+    chatbot.llm_provider = llm_provider
+    chatbot.llm_model = llm_model
+    db.commit()
+    db.refresh(chatbot)
+    return chatbot
 
 def get_chatbot_by_public_id(
     db: Session, public_id: str
@@ -48,10 +87,15 @@ def get_chatbot_by_public_id(
 
 
 def list_chatbots(
-    db: Session, *, limit: int = 50, offset: int = 0
+    db: Session,
+    *,
+    owner_id: str,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[Chatbot]:
     statement = (
         select(Chatbot)
+        .where(Chatbot.owner_id == owner_id)
         .order_by(Chatbot.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -59,8 +103,14 @@ def list_chatbots(
     return list(db.scalars(statement).all())
 
 
-def delete_chatbot(db: Session, chatbot_id: UUID) -> bool:
-    chatbot = db.get(Chatbot, chatbot_id)
+def delete_chatbot(
+    db: Session, chatbot_id: UUID, *, owner_id: str
+) -> bool:
+    statement = select(Chatbot).where(
+        Chatbot.id == chatbot_id,
+        Chatbot.owner_id == owner_id,
+    )
+    chatbot = db.scalar(statement)
 
     if chatbot is None:
         return False
@@ -316,3 +366,40 @@ def search_chunks(
     )
 
     return list(db.scalars(statement).all())
+
+
+def save_user_openrouter_key(
+    db: Session, *, owner_id: str, encrypted_api_key: str
+) -> None:
+    if not owner_id or not encrypted_api_key:
+        raise ValueError("Owner and encrypted credential are required.")
+
+    try:
+        record = db.get(UserLLMCredential, owner_id)
+        if record is None:
+            db.add(UserLLMCredential(
+                owner_id=owner_id,
+                encrypted_api_key=encrypted_api_key,
+            ))
+        else:
+            record.encrypted_api_key = encrypted_api_key
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def get_user_openrouter_key(db: Session, *, owner_id: str) -> str | None:
+    record = db.get(UserLLMCredential, owner_id)
+    return record.encrypted_api_key if record else None
+
+
+def delete_user_openrouter_key(db: Session, *, owner_id: str) -> None:
+    try:
+        record = db.get(UserLLMCredential, owner_id)
+        if record is not None:
+            db.delete(record)
+            db.commit()
+    except Exception:
+        db.rollback()
+        raise

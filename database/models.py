@@ -19,6 +19,7 @@ from database.connection import Base
 class Chatbot(Base):
     __tablename__ = "chatbots"
 
+    owner_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
@@ -31,6 +32,14 @@ class Chatbot(Base):
     )
     status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="pending"
+    )
+    llm_provider: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="groq", server_default="groq"
+    )
+    llm_model: Mapped[str] = mapped_column(
+        String(150), nullable=False,
+        default="openai/gpt-oss-120b",
+        server_default="openai/gpt-oss-120b",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -144,3 +153,13 @@ class DocumentChunk(Base):
     )
 
     page: Mapped["WebsitePage"] = relationship(back_populates="chunks")
+
+class UserLLMCredential(Base):
+    __tablename__ = "user_llm_credentials"
+
+    owner_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    encrypted_api_key: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+        onupdate=func.now(), nullable=False
+    )

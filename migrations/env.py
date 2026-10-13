@@ -7,6 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from database.connection import Base
 from database.models import (
+    UserLLMCredential,
     Chatbot,
     WebsitePage,
     Conversation,

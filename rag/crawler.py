@@ -28,6 +28,39 @@ SKIP_EXTENSIONS = (
 )
 
 
+def _validate_public_target(hostname: str, port: int) -> None:
+    """Reject hostnames that currently resolve to any non-public address.
+
+    This is a defense-in-depth preflight, not a substitute for outbound network
+    egress controls: DNS can change between this lookup and the HTTP connection.
+    Production deployment should also block private/link-local/metadata ranges
+    at the network layer.
+    """
+    hostname = hostname.rstrip(".").lower()
+    if not hostname or hostname == "localhost" or hostname.endswith(
+        (".localhost", ".local", ".internal")
+    ):
+        raise ValueError("Local and internal hostnames are not allowed.")
+
+    try:
+        addresses = socket.getaddrinfo(
+            hostname, port, type=socket.SOCK_STREAM
+        )
+    except (socket.gaierror, OSError) as exc:
+        raise ValueError("Website hostname could not be resolved.") from exc
+
+    if not addresses:
+        raise ValueError("Website hostname did not resolve to an address.")
+
+    for address in addresses:
+        try:
+            ip = ip_address(address[4][0].split("%", 1)[0])
+        except ValueError as exc:
+            raise ValueError("Website hostname resolved to an invalid address.") from exc
+        if not ip.is_global:
+            raise ValueError("Private or non-public IP addresses are not allowed.")
+
+
 def validate_website_url(url: str) -> str:
     """Validate a public HTTP(S) website URL."""
     if not isinstance(url, str) or not url.strip():
@@ -35,39 +68,22 @@ def validate_website_url(url: str) -> str:
 
     url = url.strip()
     parsed = urlparse(url)
-
     if parsed.scheme not in ("http", "https"):
         raise ValueError("Only HTTP and HTTPS URLs are allowed.")
-
     if not parsed.hostname:
         raise ValueError("A valid hostname is required.")
-
     if parsed.username or parsed.password:
         raise ValueError("URLs containing credentials are not allowed.")
 
-    hostname = parsed.hostname.lower()
-
-    if (
-        hostname == "localhost"
-        or hostname.endswith((".localhost", ".local", ".internal"))
-    ):
-        raise ValueError("Local and internal hostnames are not allowed.")
-
     try:
-        addresses = socket.getaddrinfo(
-            hostname,
-            parsed.port or (443 if parsed.scheme == "https" else 80),
-            type=socket.SOCK_STREAM,
-        )
-    except socket.gaierror as exc:
-        raise ValueError("Website hostname could not be resolved.") from exc
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise ValueError("Website URL contains an invalid port.") from exc
+    expected_port = 443 if parsed.scheme == "https" else 80
+    if port != expected_port:
+        raise ValueError("Only the default HTTP or HTTPS port is allowed.")
 
-    for address in addresses:
-        ip = ip_address(address[4][0])
-
-        if not ip.is_global:
-            raise ValueError("Private or non-public IP addresses are not allowed.")
-
+    _validate_public_target(parsed.hostname, port)
     return urldefrag(url).url
 
 
@@ -85,7 +101,12 @@ def normalize_url(url: str, allowed_domain: str) -> str | None:
     if parsed.username or parsed.password:
         return None
 
-    if parsed.port not in (None, 80, 443):
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    expected_port = 443 if parsed.scheme == "https" else 80
+    if port not in (None, expected_port):
         return None
 
     if parsed.path.lower().endswith(SKIP_EXTENSIONS):
@@ -136,8 +157,12 @@ def crawl_website(
 
     Returns a list of dictionaries containing url, title and content.
     """
-    if max_pages is not None and max_pages < 1:
-        raise ValueError("max_pages must be positive or None.")
+    if max_pages is not None and (
+        not isinstance(max_pages, int)
+        or isinstance(max_pages, bool)
+        or max_pages < 1
+    ):
+        raise ValueError("max_pages must be a positive integer or None.")
 
     if not 1 <= timeout <= 60:
         raise ValueError("timeout must be between 1 and 60 seconds.")
@@ -160,6 +185,8 @@ def crawl_website(
     started_at = time.monotonic()
 
     with requests.Session() as session:
+        # Do not allow ambient proxy configuration to bypass the target checks.
+        session.trust_env = False
         session.headers.update(HEADERS)
 
         while queue:
@@ -182,6 +209,14 @@ def crawl_website(
             visited.add(url)
 
             try:
+                # Repeat the public-IP preflight immediately before every fetch,
+                # including same-host links and redirects. Network-level egress
+                # filtering is still needed to close DNS-rebinding race windows.
+                parsed_target = urlparse(url)
+                target_port = parsed_target.port or (
+                    443 if parsed_target.scheme == "https" else 80
+                )
+                _validate_public_target(parsed_target.hostname or "", target_port)
                 with session.get(
                     url,
                     timeout=timeout,

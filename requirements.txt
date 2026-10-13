@@ -14,6 +14,10 @@ psycopg[binary]==3.1.19
 pgvector==0.2.5
 alembic==1.13.1
 
+# Authentication and encrypted customer credentials
+PyJWT[crypto]>=2.8,<3
+cryptography>=42,<46
+
 # LLM orchestration
 langchain==0.2.3
 langchain-core==0.2.5
@@ -21,7 +25,8 @@ langchain-community==0.2.4
 langchain-text-splitters==0.2.1
 langgraph==0.0.55
 
-# Embeddings and model dependencies
+# Embeddings and model dependencies (Python 3.11 deployment target)
+numpy>=1.23,<2
 sentence-transformers==2.2.2
 transformers==4.36.2
 torch==2.2.2

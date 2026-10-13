@@ -39,7 +39,7 @@ def send_message(
             detail="Message cannot be empty.",
         )
 
-    chatbot = repository.get_chatbot(db, request.chatbot_id)
+    chatbot = repository.get_chatbot_by_id(db, request.chatbot_id)
 
     if chatbot is None:
         raise HTTPException(
@@ -47,7 +47,7 @@ def send_message(
             detail="Chatbot not found.",
         )
 
-    if chatbot.status != "ready":
+    if chatbot.status not in ("ready", "partial"):
         raise HTTPException(
             status_code=409,
             detail="This chatbot's website knowledge is not ready yet.",

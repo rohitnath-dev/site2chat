@@ -146,11 +146,7 @@ def get_llm(
     model: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> GroqLLM | OpenRouterLLM:
-    """Create an LLM client for the requested provider.
-
-    Groq is the default. OpenRouter requires an explicit API key
-    and model supplied by the backend.
-    """
+    """Create an LLM client using the selected provider and configuration."""
 
     selected_provider = (
         provider or os.getenv("LLM_PROVIDER", "groq")
@@ -163,19 +159,21 @@ def get_llm(
         )
 
     if selected_provider == "openrouter":
-        if not api_key:
-            raise ValueError(
-                "An OpenRouter API key must be configured."
-            )
+        selected_key = (
+            api_key if api_key is not None
+            else os.getenv("OPENROUTER_API_KEY", "").strip()
+        )
+        selected_model = model or os.getenv("OPENROUTER_MODEL", "").strip()
 
-        if not model:
-            raise ValueError(
-                "An OpenRouter model must be selected."
-            )
+        if not selected_key:
+            raise RuntimeError("OPENROUTER_API_KEY is not configured.")
+
+        if not selected_model:
+            raise ValueError("OPENROUTER_MODEL is not configured.")
 
         return OpenRouterLLM(
-            api_key=api_key,
-            model=model,
+            api_key=selected_key,
+            model=selected_model,
             timeout=timeout,
         )
 

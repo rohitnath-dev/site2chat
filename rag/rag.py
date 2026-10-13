@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 
 from database import repository
 from rag.embeddings import embedding_service
-from rag.llm import GroqLLM
+from rag.llm import get_llm
+from core.secret_store import decrypt_secret
 
 
 DEFAULT_RETRIEVAL_LIMIT = 5
@@ -14,7 +15,7 @@ MAX_QUESTION_LENGTH = 4000
 class RAGService:
     def __init__(
         self,
-        llm: GroqLLM | None = None,
+        llm=None,
         retrieval_limit: int = DEFAULT_RETRIEVAL_LIMIT,
     ):
         if not 1 <= retrieval_limit <= 20:
@@ -41,7 +42,7 @@ class RAGService:
         if len(question) > MAX_QUESTION_LENGTH:
             raise ValueError("Question is too long.")
 
-        chatbot = repository.get_chatbot(db, chatbot_id)
+        chatbot = repository.get_chatbot_by_id(db, chatbot_id)
 
         if chatbot is None:
             raise ValueError("Chatbot not found.")
@@ -75,8 +76,26 @@ class RAGService:
                 "website's knowledge base."
             )
 
-        if self.llm is None:
-            self.llm = GroqLLM()
+        if self.llm is not None:
+            llm = self.llm
+        elif chatbot.llm_provider == "openrouter":
+            if not chatbot.owner_id:
+                raise RuntimeError("Chatbot owner is not configured.")
+            encrypted_key = repository.get_user_openrouter_key(
+                db, owner_id=chatbot.owner_id
+            )
+            if not encrypted_key:
+                raise RuntimeError("Configure an OpenRouter key for this account.")
+            llm = get_llm(
+                provider="openrouter",
+                api_key=decrypt_secret(encrypted_key),
+                model=chatbot.llm_model,
+            )
+        else:
+            llm = get_llm(
+                provider=chatbot.llm_provider,
+                model=chatbot.llm_model,
+            )
 
         prompt = (
             "You are an assistant answering questions about a website.\n"
@@ -90,7 +109,7 @@ class RAGService:
             "Answer:"
         )
 
-        answer = self.llm.invoke(prompt)
+        answer = llm.invoke(prompt)
 
         if not isinstance(answer, str) or not answer.strip():
             raise RuntimeError("The LLM returned an empty answer.")
