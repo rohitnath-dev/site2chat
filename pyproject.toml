@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "site2chat"
+version = "0.1.0"
+description = "Website-powered AI chatbot API"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "core*", "database*", "rag*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

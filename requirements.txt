@@ -1,26 +1,32 @@
-streamlit
+# API
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.1
 
+# Configuration and HTTP
+python-dotenv==1.0.1
+requests==2.32.3
+beautifulsoup4==4.12.3
+
+# Database
+SQLAlchemy==2.0.30
+psycopg[binary]==3.1.19
+pgvector==0.2.5
+alembic==1.13.1
+
+# LLM orchestration
 langchain==0.2.3
 langchain-core==0.2.5
 langchain-community==0.2.4
 langchain-text-splitters==0.2.1
 langgraph==0.0.55
 
-faiss-cpu==1.7.4
-
+# Embeddings and model dependencies
 sentence-transformers==2.2.2
 transformers==4.36.2
 torch==2.2.2
-
 huggingface-hub==0.20.3
 
-pydantic==2.7.1
-requests
-python-dotenv
-
-beautifulsoup4
-
-SQLAlchemy
-psycopg[binary]
-pgvector
-alembic
+# Existing RAG implementation dependencies
+faiss-cpu==1.7.4
+streamlit==1.35.0
