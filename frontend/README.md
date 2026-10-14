@@ -24,11 +24,14 @@ Environment variables (all public, none are secrets):
 ## Deploying
 
 - Serve `dist/` as a single-page app: every path (`/chat/:id`, `/dashboard`, …) must fall back to `index.html`.
+  On Vercel, `vercel.json` in this folder does that (set the project's Root Directory to `frontend`).
 - Set **`FRONTEND_ORIGINS`** on the Render backend to the exact deployed frontend origin
   (comma-separated for several, e.g. `https://app.example.com`) and redeploy the backend. Without it, browsers
   block calls from the deployed frontend. `http://localhost:5173` is the default for local development.
-- In Supabase Auth settings, add the deployed origin to the allowed redirect URLs so email confirmation and
-  password-reset links return to the app (`/dashboard` and `/forgot-password`).
+- In Supabase → Authentication → URL Configuration, set **Site URL** to the deployed origin and add
+  `https://<your-origin>/**` (or at least `/auth/confirm` and `/forgot-password`) to **Redirect URLs**.
+  Confirmation emails return to `/auth/confirm`; password-reset emails return to `/forgot-password`.
+- Keep "Confirm email" enabled. The confirmation template should use `{{ .ConfirmationURL }}`.
 
 ## Embedding
 

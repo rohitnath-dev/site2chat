@@ -23,10 +23,26 @@ const looksLikePlaceholder =
 
 export const isSupabaseConfigured = !looksLikePlaceholder;
 
-// Captured before createClient() consumes and strips the URL hash, so a password-reset
-// link is still recognised even if the PASSWORD_RECOVERY event fires before we subscribe.
-export const startedInRecovery =
-  typeof window !== "undefined" && /(^|[#&])type=recovery(&|$)/.test(window.location.hash);
+// Supabase returns users from an email link with the result in the URL hash (implicit flow):
+//   success: #access_token=...&type=signup|recovery|...
+//   failure: #error=access_denied&error_code=otp_expired&error_description=...
+// supabase-js consumes and strips that hash when the client is created, so capture it first.
+// Only the type and error text are kept here; tokens are never read or stored by this code.
+function readAuthCallback() {
+  const empty = { isCallback: false, type: null as string | null, errorCode: null as string | null, errorMessage: null as string | null };
+  if (typeof window === "undefined") return empty;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const type = hash.get("type");
+  const hasTokens = hash.has("access_token");
+  const errorCode = hash.get("error_code");
+  const errorMessage = hash.get("error_description") || (hash.get("error") ? "The link could not be used." : null);
+  return { isCallback: hasTokens || !!errorMessage, type, errorCode, errorMessage };
+}
+
+export const authCallback = readAuthCallback();
+
+// Kept for the password-reset screen.
+export const startedInRecovery = authCallback.type === "recovery";
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url as string, key as string, {

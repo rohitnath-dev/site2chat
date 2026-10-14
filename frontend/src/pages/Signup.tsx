@@ -12,8 +12,33 @@ export default function Signup() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendNote, setResendNote] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+  const [resendLocked, setResendLocked] = useState(false);
 
   if (session) return <Navigate to="/dashboard" replace />;
+
+  // Must be an allowed Redirect URL in Supabase Auth settings, and a real route in the SPA.
+  const confirmUrl = `${window.location.origin}/auth/confirm`;
+
+  const resend = async () => {
+    if (resending || resendLocked || !supabase) return;
+    setResending(true);
+    setResendNote(null);
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: confirmUrl },
+    });
+    setResending(false);
+    if (err) {
+      setResendNote({ kind: "error", text: err.message });
+      return;
+    }
+    setResendNote({ kind: "success", text: "Sent. It can take a minute to arrive, so check spam too." });
+    setResendLocked(true);
+    window.setTimeout(() => setResendLocked(false), 60_000);
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,7 +56,7 @@ export default function Signup() {
     const { data, error: err } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: { emailRedirectTo: confirmUrl },
     });
     setBusy(false);
     if (err) {
@@ -52,12 +77,22 @@ export default function Signup() {
       <AuthLayout>
         <h1 className="display">Check your email</h1>
         <p className="muted" style={{ margin: "8px 0 20px" }}>
-          We sent a confirmation link to <strong>{email.trim()}</strong>. Open it to finish creating your account, then
-          log in.
+          We sent a confirmation link to <strong>{email.trim()}</strong>. Open it to confirm your email. You'll be
+          signed in and taken straight to your Site2Chat dashboard.
         </p>
-        <Link to="/login" className="btn btn-primary">
-          Go to log in
-        </Link>
+        {resendNote && (
+          <div style={{ marginBottom: 16 }}>
+            <Alert kind={resendNote.kind}>{resendNote.text}</Alert>
+          </div>
+        )}
+        <div className="copy-row" style={{ flexWrap: "wrap" }}>
+          <button className="btn" onClick={() => void resend()} disabled={resending || resendLocked}>
+            {resending ? "Sending…" : "Resend email"}
+          </button>
+          <Link to="/login" className="btn btn-ghost">
+            Go to log in
+          </Link>
+        </div>
       </AuthLayout>
     );
   }
