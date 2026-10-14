@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Copy, ExternalLink, MessageCircle, Plus, RefreshCw, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
-import { api, type Chatbot } from "../lib/api";
+import { api, ApiError, type Chatbot } from "../lib/api";
 import { chatLink, copyText, displayHost } from "../lib/utils";
 import { Alert, Modal, StatusBadge } from "../components/ui";
 import { SharePanel } from "../components/SharePanel";
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const toast = useToast();
   const [bots, setBots] = useState<Chatbot[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadStatus, setLoadStatus] = useState<number | null>(null);
   const [shareBot, setShareBot] = useState<Chatbot | null>(null);
   const [providerBot, setProviderBot] = useState<Chatbot | null>(null);
   const [deleteBot, setDeleteBot] = useState<Chatbot | null>(null);
@@ -20,10 +21,12 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     setLoadError(null);
+    setLoadStatus(null);
     try {
       setBots(await api.listChatbots());
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Couldn't load your chatbots.");
+      setLoadStatus(err instanceof ApiError ? err.status : null);
       setBots((prev) => prev ?? []);
     }
   }, []);
@@ -85,7 +88,7 @@ export default function Dashboard() {
 
       {loadError && (
         <div style={{ marginBottom: 20 }}>
-          <Alert kind="error">
+          <Alert kind={loadStatus === 503 || loadStatus === 0 ? "warn" : "error"}>
             {loadError}{" "}
             <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={() => void load()}>
               <RefreshCw size={14} /> Retry

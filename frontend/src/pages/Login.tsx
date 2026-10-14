@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
 import { Alert } from "../components/ui";
+import { ResendConfirmation } from "../components/ResendConfirmation";
+import { describeAuthError } from "../lib/authErrors";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
@@ -13,6 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
 
   if (session && !recovery) {
     return <Navigate to={from && from.startsWith("/") ? from : "/dashboard"} replace />;
@@ -22,6 +25,7 @@ export default function Login() {
     e.preventDefault();
     if (busy || !supabase) return;
     setError(null);
+    setUnconfirmed(false);
     if (!email.trim() || !password) {
       setError("Enter your email and password.");
       return;
@@ -30,13 +34,8 @@ export default function Login() {
     const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (err) {
-      setError(
-        /not confirmed/i.test(err.message)
-          ? "Please confirm your email first. Check your inbox for the confirmation link."
-          : /invalid login/i.test(err.message)
-            ? "That email and password don't match."
-            : err.message,
-      );
+      setUnconfirmed(err.code === "email_not_confirmed" || /not confirmed/i.test(err.message));
+      setError(describeAuthError(err));
     }
     // On success the auth listener updates the session and this page redirects.
   };
@@ -74,7 +73,12 @@ export default function Login() {
         </div>
         {error && (
           <div style={{ marginBottom: 16 }}>
-            <Alert kind="error">{error}</Alert>
+            <Alert kind={unconfirmed ? "warn" : "error"}>{error}</Alert>
+          </div>
+        )}
+        {unconfirmed && (
+          <div style={{ marginBottom: 16 }}>
+            <ResendConfirmation email={email.trim()} />
           </div>
         )}
         <button className="btn btn-primary" style={{ width: "100%" }} disabled={busy}>

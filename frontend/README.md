@@ -32,6 +32,11 @@ Environment variables (all public, none are secrets):
   `https://<your-origin>/**` (or at least `/auth/confirm` and `/forgot-password`) to **Redirect URLs**.
   Confirmation emails return to `/auth/confirm`; password-reset emails return to `/forgot-password`.
 - Keep "Confirm email" enabled. The confirmation template should use `{{ .ConfirmationURL }}`.
+- Supabase's built-in email sender is for testing only: it is heavily rate-limited and may only deliver to
+  your project team's addresses. For real users, configure **Authentication → SMTP Settings** with your own provider.
+- On Render, `SUPABASE_URL` must be exactly `https://<project-ref>.supabase.co` (no path, https). The API checks logins
+  against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`; if that request fails it answers 503
+  "Authentication service is temporarily unavailable."
 
 ## Embedding
 

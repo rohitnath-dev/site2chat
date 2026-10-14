@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 const RAW_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 export const API_ROOT = (RAW_BASE || "https://site2chat-api.onrender.com").replace(/\/+$/, "");
 const API = `${API_ROOT}/api/v1`;
+const RETRY_DELAYS_MS = [1200, 3000];
 
 export type ChatbotStatus = "pending" | "ready" | "partial" | string;
 
@@ -63,6 +64,11 @@ function friendly(status: number, detail: string | null, context: "management" |
     case 502:
       return detail || "The service couldn't complete that request. Please try again.";
     case 503:
+      // The API answers 503 when it can't reach the Supabase key service to check a login token.
+      // The user's session is fine at that point, so say that instead of implying they're signed out.
+      if (detail && /authentication/i.test(detail)) {
+        return "You're signed in, but Site2Chat's server couldn't verify your login just now. This is a server-side problem, not your account. Try again in a moment; if it keeps happening, the server's sign-in configuration needs attention.";
+      }
       return detail || "The service is temporarily unavailable. Please try again shortly.";
     default:
       return detail || `Something went wrong (error ${status}).`;
@@ -127,18 +133,33 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     }
   };
 
+  // Read-only requests get a couple of short retries for transient failures (network drop or a 503).
+  // Writes are never retried automatically, and a persistent failure is still reported.
+  const sendWithRetry = async (token: string | null): Promise<Response> => {
+    for (let attempt = 0; ; attempt++) {
+      const canRetry = method === "GET" && attempt < RETRY_DELAYS_MS.length;
+      try {
+        const r = await send(token);
+        if (!(canRetry && r.status === 503)) return r;
+      } catch (e) {
+        if (!(canRetry && e instanceof ApiError && e.status === 0)) throw e;
+      }
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  };
+
   let token: string | null = null;
   if (auth) {
     token = await getToken();
     if (!token) throw new ApiError(401, friendly(401, null, context));
   }
 
-  let res = await send(token);
+  let res = await sendWithRetry(token);
 
   if (auth && res.status === 401) {
     const refreshed = await getToken(true);
     if (refreshed) {
-      res = await send(refreshed);
+      res = await sendWithRetry(refreshed);
     }
     if (res.status === 401) {
       if (supabase) await supabase.auth.signOut();
