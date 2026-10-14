@@ -23,6 +23,9 @@ Environment variables (all public, none are secrets):
 
 ## Deploying
 
+Full dashboard settings (custom SMTP, branded email templates, redirect URLs, Render/Vercel variables, database RLS)
+are in [`../docs/supabase-setup.md`](../docs/supabase-setup.md).
+
 - Serve `dist/` as a single-page app: every path (`/chat/:id`, `/dashboard`, …) must fall back to `index.html`.
   On Vercel, `vercel.json` in this folder does that (set the project's Root Directory to `frontend`).
 - Set **`FRONTEND_ORIGINS`** on the Render backend to the exact deployed frontend origin

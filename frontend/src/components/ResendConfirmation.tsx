@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Mail } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import { describeAuthError, isRateLimited } from "../lib/authErrors";
+import { describeAuthError, isRateLimited, retryAfterSeconds } from "../lib/authErrors";
 import { Alert } from "./ui";
 
 const COOLDOWN_SECONDS = 60;
@@ -33,7 +33,7 @@ export function ResendConfirmation({ email, initialLockSeconds = 0 }: { email: s
     setBusy(false);
     if (error) {
       setNote({ kind: "error", text: describeAuthError(error) });
-      if (isRateLimited(error)) setSeconds(COOLDOWN_SECONDS);
+      if (isRateLimited(error)) setSeconds(retryAfterSeconds(error) ?? COOLDOWN_SECONDS);
       return;
     }
     setNote({

@@ -182,7 +182,10 @@ export default function Create() {
           <h1 className="display" style={{ fontSize: 34 }}>
             Setting up your chatbot
           </h1>
-          <p className="muted">Large websites can take a few minutes. Please keep this tab open.</p>
+          <p className="muted">
+            Large websites can take a few minutes, and if the server has been idle the first step can take up to a
+            minute to start. Please keep this tab open.
+          </p>
           <ol className="stages">
             {STAGES.map((label, i) => {
               const cls = i < stage ? "done" : i === stage ? "active" : "";

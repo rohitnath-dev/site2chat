@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Brand, ConfigNotice } from "../components/ui";
+import { Footer } from "../components/Footer";
 import { isSupabaseConfigured } from "../lib/supabase";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -15,6 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       ) : (
         <ConfigNotice />
       )}
+      <Footer />
     </div>
   );
 }

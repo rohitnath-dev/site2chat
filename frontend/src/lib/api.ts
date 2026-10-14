@@ -48,7 +48,7 @@ export class ApiError extends Error {
 function friendly(status: number, detail: string | null, context: "management" | "chat"): string {
   switch (status) {
     case 0:
-      return "Couldn't reach the server. Check your connection and try again. The server may also be waking up, so give it a moment.";
+      return "Couldn't get a response from the server. This can be your connection, the server waking up after being idle (it can take up to a minute), or the server stopping partway through. Wait a moment and try again.";
     case 400:
       return detail || "The request couldn't be processed.";
     case 401:

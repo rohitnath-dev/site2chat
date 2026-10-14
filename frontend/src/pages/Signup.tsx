@@ -5,7 +5,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import { Alert } from "../components/ui";
 import { ResendConfirmation } from "../components/ResendConfirmation";
 import { supabase } from "../lib/supabase";
-import { describeAuthError } from "../lib/authErrors";
+import { classifySignUp, describeAuthError } from "../lib/authErrors";
 import { useAuth } from "../lib/auth";
 
 export default function Signup() {
@@ -16,6 +16,7 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [existing, setExisting] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState(false);
+  const [resumed, setResumed] = useState(false);
 
   if (session) return <Navigate to="/dashboard" replace />;
 
@@ -44,14 +45,18 @@ export default function Signup() {
       setError(describeAuthError(err));
       return;
     }
-    // Supabase returns an obfuscated user with no identities when the email already exists.
-    if (data.user && data.user.identities && data.user.identities.length === 0) {
+    // A session means no confirmation was required; the auth listener redirects to the dashboard.
+    if (data.session) return;
+
+    const outcome = classifySignUp(data.user);
+    if (outcome === "existing_confirmed") {
+      // No email is sent for an address that already has a confirmed account.
       setExisting(true);
       setError("An account with this email already exists. Log in, or reset your password if you've forgotten it.");
       return;
     }
-    if (!data.session) setConfirmEmail(true);
-    // If a session was returned, the auth listener redirects to the dashboard.
+    setResumed(outcome === "existing_unconfirmed");
+    setConfirmEmail(true);
   };
 
   if (confirmEmail) {
@@ -61,9 +66,18 @@ export default function Signup() {
           <Mail size={30} aria-hidden="true" />
         </div>
         <h1 className="display">Confirm your Site2Chat account</h1>
+        {resumed && (
+          <div style={{ margin: "10px 0" }}>
+            <Alert kind="info">
+              You started signing up with this address before but never confirmed it. Use the newest email: links from
+              earlier ones may no longer work.
+            </Alert>
+          </div>
+        )}
         <p className="muted" style={{ margin: "10px 0 14px" }}>
           We've asked our email service to send a confirmation link to <strong>{email.trim()}</strong>. It usually
-          arrives within a few minutes, but delivery isn't guaranteed.
+          arrives within a few minutes, but we can't see whether it was delivered. If it doesn't arrive, use the resend
+          button below.
         </p>
         <ul className="muted" style={{ margin: "0 0 20px", paddingLeft: 20, fontSize: 14 }}>
           <li>Check spam, junk and promotions folders.</li>

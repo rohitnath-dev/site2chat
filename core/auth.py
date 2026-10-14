@@ -1,3 +1,5 @@
+import logging
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -5,6 +7,14 @@ from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError
 
 from core.config import settings
+from core.jwks_check import (
+    JWKS_HEADERS,
+    JWKS_TIMEOUT_SECONDS,
+    describe_connection_error,
+    jwks_url,
+)
+
+logger = logging.getLogger("site2chat.auth")
 
 bearer_scheme = HTTPBearer(auto_error=False)
 _jwks_client: PyJWKClient | None = None
@@ -22,9 +32,10 @@ def get_jwks_client() -> PyJWKClient:
 
     if _jwks_client is None:
         _jwks_client = PyJWKClient(
-            f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json",
+            jwks_url(),
             cache_keys=True,
-            timeout=5,
+            timeout=JWKS_TIMEOUT_SECONDS,
+            headers=JWKS_HEADERS,
         )
     return _jwks_client
 
@@ -61,6 +72,8 @@ def get_current_user(
             options={"require": ["exp", "sub", "iss", "aud"]},
         )
     except PyJWKClientConnectionError as exc:
+        # Log the real reason (no token or key material) so it is visible in server logs.
+        logger.error("Supabase JWKS fetch failed: %s", describe_connection_error(exc))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service is temporarily unavailable.",

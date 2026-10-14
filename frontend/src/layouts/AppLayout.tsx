@@ -3,6 +3,7 @@ import { LogOut, Plus, Settings as SettingsIcon } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { Brand, ConfigNotice } from "../components/ui";
+import { Footer } from "../components/Footer";
 
 /** Guards dashboard routes and provides the quiet app chrome. */
 export default function AppLayout() {
@@ -21,7 +22,7 @@ export default function AppLayout() {
   if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
   return (
-    <>
+    <div className="shell">
       <header className="app-header">
         <div className="container nav">
           <Brand to="/dashboard" />
@@ -52,11 +53,12 @@ export default function AppLayout() {
           </nav>
         </div>
       </header>
-      <main className="page">
+      <main className="page shell-main">
         <div className="container">
           <Outlet />
         </div>
       </main>
-    </>
+      <Footer />
+    </div>
   );
 }

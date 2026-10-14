@@ -1,0 +1,56 @@
+<!-- Supabase → Authentication → Emails → "Confirm signup"
+     Subject:  Confirm your Site2Chat account
+     Paste everything below this comment into the message body (HTML) field.
+     Only Supabase's own template variables are used: {{ .ConfirmationURL }}, {{ .Email }}, {{ .SiteURL }}. -->
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#faf8f3;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm your email to finish creating your Site2Chat account.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e6e2d7;border-radius:14px;">
+            <tr>
+              <td style="padding:28px 32px 0 32px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#14241b;">
+                Site2Chat
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px 0 32px;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.2;color:#14241b;">
+                Confirm your email
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:14px 32px 0 32px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#14241b;">
+                Thanks for signing up for Site2Chat, the easiest way to turn a website into a chatbot. Confirm that
+                this is your email address to finish creating your account.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px;">
+                <a href="{{ .ConfirmationURL }}"
+                   style="display:inline-block;background:#1f6b45;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:13px 26px;border-radius:999px;">
+                  Confirm my email
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#5b675f;">
+                Button not working? Copy this link into your browser:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#1f6b45;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 28px 32px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#8a948d;border-top:1px solid #e6e2d7;">
+                You're receiving this because someone signed up for a Site2Chat account with {{ .Email }}. If that
+                wasn't you, you can ignore this email and no account will be activated.<br /><br />
+                <a href="{{ .SiteURL }}/privacy" style="color:#8a948d;">Privacy</a> &nbsp;·&nbsp;
+                <a href="{{ .SiteURL }}/contact" style="color:#8a948d;">Contact</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Brand } from "../components/ui";
+import { Footer } from "../components/Footer";
 import { useAuth } from "../lib/auth";
 
 export default function Landing() {
@@ -62,9 +63,7 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="footer">
-        <div className="container">Site2Chat</div>
-      </footer>
+      <Footer />
     </>
   );
 }
