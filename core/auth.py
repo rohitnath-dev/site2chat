@@ -1,4 +1,5 @@
 import logging
+import time
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -15,6 +16,10 @@ from core.jwks_check import (
 )
 
 logger = logging.getLogger("site2chat.auth")
+
+# A JWKS fetch can fail transiently (cold start, brief network blip). Retry before giving up.
+JWKS_FETCH_ATTEMPTS = 3
+JWKS_RETRY_DELAY_SECONDS = 0.5
 
 bearer_scheme = HTTPBearer(auto_error=False)
 _jwks_client: PyJWKClient | None = None
@@ -40,6 +45,23 @@ def get_jwks_client() -> PyJWKClient:
     return _jwks_client
 
 
+def _get_signing_key(token: str):
+    """Look up the token's signing key, retrying only on connection failures."""
+    for attempt in range(1, JWKS_FETCH_ATTEMPTS + 1):
+        try:
+            return get_jwks_client().get_signing_key_from_jwt(token)
+        except PyJWKClientConnectionError as exc:
+            logger.warning(
+                "Supabase JWKS fetch attempt %d/%d failed: %s",
+                attempt,
+                JWKS_FETCH_ATTEMPTS,
+                describe_connection_error(exc),
+            )
+            if attempt == JWKS_FETCH_ATTEMPTS:
+                raise
+            time.sleep(JWKS_RETRY_DELAY_SECONDS)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> dict:
@@ -60,9 +82,7 @@ def get_current_user(
     issuer = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
 
     try:
-        signing_key = get_jwks_client().get_signing_key_from_jwt(
-            credentials.credentials
-        )
+        signing_key = _get_signing_key(credentials.credentials)
         payload = jwt.decode(
             credentials.credentials,
             signing_key.key,
@@ -81,6 +101,9 @@ def get_current_user(
     except HTTPException:
         raise
     except Exception as exc:
+        # Log only the exception class (never the token) so 401 causes are distinguishable:
+        # ExpiredSignatureError, InvalidAudienceError, InvalidIssuerError, PyJWKClientError, ...
+        logger.warning("Token rejected: %s", type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
