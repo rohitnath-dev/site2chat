@@ -28,6 +28,7 @@ p {
 
 a {
   color: inherit;
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -57,6 +58,7 @@ select {
   max-width: var(--max-w);
   margin: 0 auto;
   padding: 0 var(--gutter);
+  min-width: 0;
 }
 
 .display {
@@ -86,6 +88,7 @@ select {
   font-size: 15px;
   text-decoration: none;
   cursor: pointer;
+  max-width: 100%;
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
     transform var(--t-fast) var(--ease);
 }
@@ -168,6 +171,8 @@ select {
 .textarea,
 .select {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 46px;
   padding: 10px 14px;
   border-radius: var(--radius);
@@ -213,6 +218,10 @@ select {
   font-size: 14px;
   border: 1px solid var(--border);
   background: var(--surface-muted);
+}
+.alert > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .alert svg {
   flex: none;
@@ -309,6 +318,9 @@ select {
   gap: 12px;
   min-height: 68px;
 }
+.container.nav {
+  flex-wrap: wrap;
+}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -333,6 +345,9 @@ select {
   align-items: center;
   gap: 6px;
 }
+.app-nav-logout span {
+  display: none;
+}
 
 /* App shell */
 .app-header {
@@ -344,10 +359,12 @@ select {
 }
 .page {
   padding: 36px 0 80px;
+  min-width: 0;
 }
 .page-narrow {
   max-width: 640px;
   margin: 0 auto;
+  min-width: 0;
 }
 .page-head {
   display: flex;
@@ -484,6 +501,10 @@ select {
   color: var(--text-faint);
   font-size: 13px;
 }
+.footer-base > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 /* Long-form text pages */
 .prose {
@@ -509,13 +530,7 @@ select {
 }
 .prose li {
   margin-bottom: 6px;
-}
-.todo {
-  background: var(--warn-soft);
-  color: var(--warn);
-  border-radius: 6px;
-  padding: 0 6px;
-  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 /* Dashboard */
@@ -527,6 +542,7 @@ select {
 }
 .stat {
   padding: 14px 16px;
+  min-width: 0;
 }
 .stat-value {
   font-size: 28px;
@@ -553,6 +569,9 @@ select {
 .bot-info {
   min-width: 0;
   flex: 1 1 260px;
+}
+.bot-desc {
+  overflow-wrap: anywhere;
 }
 .bot-title {
   display: flex;
@@ -647,6 +666,8 @@ select {
 .copy-row {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .code {
   font-family: var(--font-mono);
@@ -691,6 +712,8 @@ select {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   cursor: pointer;
+  min-width: 0;
+  overflow-wrap: anywhere;
   transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .seg-opt[aria-pressed="true"] {
@@ -778,8 +801,10 @@ select {
   background: var(--surface);
 }
 .chat-head h1 {
+  min-width: 0;
   font-size: 16px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .chat-scroll {
   flex: 1;
@@ -841,6 +866,7 @@ select {
 }
 .chat-form textarea {
   flex: 1;
+  min-width: 0;
   min-height: 46px;
   max-height: 140px;
   resize: none;
@@ -891,6 +917,48 @@ select {
 }
 
 @media (max-width: 720px) {
+  .app-header .container.nav {
+    min-height: 0;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .app-header .nav-links {
+    flex: 0 0 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .app-header .nav-links > * {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .app-header .nav-links .btn-label-hide {
+    display: inline;
+  }
+  .app-header .nav-links .btn {
+    gap: 6px;
+    padding-right: 8px;
+    padding-left: 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .app-header .nav-links .app-nav-logout {
+    display: inline-flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .app-header .nav-links .app-nav-logout span {
+    display: inline;
+  }
   .footer-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -911,5 +979,26 @@ select {
   }
   .btn-label-hide {
     display: none;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .footer-col a {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth-card {
+    padding: 20px;
+  }
+  .section {
+    padding: 18px;
+  }
+  .modal {
+    padding: 20px;
   }
 }

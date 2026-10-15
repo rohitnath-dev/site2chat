@@ -1,108 +1,120 @@
 import { Link } from "react-router-dom";
-import LegalLayout, { DraftNotice, Todo } from "../layouts/LegalLayout";
-import { OPERATOR_NAME, SUPPORT_EMAIL } from "../lib/site";
+import LegalLayout from "../layouts/LegalLayout";
+import { SUPPORT_EMAIL } from "../lib/site";
 
 export default function Privacy() {
   return (
     <LegalLayout title="Privacy Policy">
-      <p className="muted">
-        Effective date: <Todo>date this policy takes effect</Todo>
-      </p>
-      <DraftNotice />
-
-      <h2>Who runs Site2Chat</h2>
       <p>
-        Site2Chat turns a website you point it at into a chatbot. It is operated by{" "}
-        {OPERATOR_NAME || <Todo>legal name and postal address of the operator</Todo>}. Questions about this policy:{" "}
-        {SUPPORT_EMAIL ? <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> : <Link to="/contact">contact page</Link>}.
+        Site2Chat lets account holders create chatbots from websites they submit. This policy describes information
+        handled by the service when an owner manages a chatbot or a visitor uses one.
       </p>
 
-      <h2>What we collect</h2>
+      <h2>Information handled by Site2Chat</h2>
       <ul>
         <li>
-          <strong>Account details.</strong> Your email address and password. Sign-in is handled by our authentication
-          provider, Supabase; passwords are stored by them in hashed form and are never visible to us.
+          <strong>Account and sign-in information.</strong> Registration and sign-in use Supabase Auth in your browser.
+          Your email address and password are sent to Supabase Auth; the Site2Chat API receives authentication tokens,
+          not your password. Confirmation and password-reset emails are handled through the Supabase project and its
+          configured email settings.
         </li>
         <li>
-          <strong>Chatbot details you enter.</strong> The chatbot name, optional description and website address.
+          <strong>Chatbot settings.</strong> We store the chatbot name, optional description, website address, and
+          selected AI provider and model.
         </li>
         <li>
-          <strong>Website content.</strong> When you create a chatbot we read pages from the website you provide (up to
-          100 pages), then store the text of those pages and numeric representations of it (embeddings) so the chatbot
-          can find relevant passages.
+          <strong>Website material.</strong> When an owner creates or re-runs a chatbot, Site2Chat reads public pages
+          from the submitted website. Each ingestion run is limited to 100 pages on that website. The service stores
+          page URLs, titles and extracted text, along with text chunks and embeddings used to find relevant passages.
         </li>
         <li>
-          <strong>AI provider settings.</strong> Which provider and model a chatbot uses. If you add an OpenRouter API
-          key, it is stored encrypted on our server and used only to run your chatbots.
+          <strong>Chat messages.</strong> A public chatbot visitor can send a question without creating a Site2Chat
+          account. We store the question and generated reply with the chatbot's conversation record. The browser keeps a
+          random chatbot session identifier in local storage so later messages can be associated with that conversation.
+          The chat form does not ask for a visitor's name or email, but a visitor may include personal information in a
+          message.
         </li>
         <li>
-          <strong>Visitor conversations.</strong> Messages sent to a chatbot and its replies are stored and linked to
-          that chatbot and to a random session identifier that the visitor's browser keeps in local storage. We do not
-          ask visitors for their name or email.
+          <strong>Provider credentials.</strong> If an owner adds an OpenRouter API key, the server encrypts it before
+          storing it in the application database. The key is used to call OpenRouter for that owner's chatbots and can
+          be removed from Settings. Site2Chat does not display the saved key again.
         </li>
         <li>
-          <strong>Technical data.</strong> Our hosting providers keep ordinary server logs, which can include IP
-          addresses and request details.
+          <strong>Browser storage.</strong> Supabase Auth persists the signed-in session in the browser, and Site2Chat
+          stores the chatbot session identifier in local storage.
         </li>
         <li>
-          <strong>Browser storage.</strong> Your signed-in session and the chat session identifier are kept in your
-          browser's local storage. We have not added advertising or analytics trackers.
+          <strong>Operational information.</strong> Requests pass through the service's hosting, authentication and
+          database providers. Those providers may process technical information such as network and request details.
+          The exact fields depend on the deployed providers and their settings.
         </li>
       </ul>
 
-      <h2>How we use it</h2>
+      <h2>How information is used</h2>
       <p>
-        To run your account, create and answer from your chatbots, send account emails such as confirmation and
-        password reset messages, keep the service secure, and fix problems. We do not sell personal data.
+        Site2Chat uses this information to manage accounts and chatbots, crawl and index submitted websites, retrieve
+        relevant website passages, generate chatbot replies, and operate and protect the service. Do not include
+        passwords, API keys or other sensitive information in chatbot messages.
       </p>
 
-      <h2>Who we share it with</h2>
-      <p>These providers process data on our behalf to run the service:</p>
+      <h2>Service providers and disclosures</h2>
       <ul>
-        <li>Supabase: authentication (and email sending unless a separate provider is set up).</li>
-        <li>Render: hosts the Site2Chat API. Vercel: hosts this website.</li>
         <li>
-          Our database provider: <Todo>name and region of the database host</Todo>.
+          <strong>Supabase</strong> provides authentication. Its project settings control account confirmation and
+          password-reset email delivery.
         </li>
         <li>
-          Groq: when a chatbot uses Groq, the visitor's question and relevant excerpts of your website are sent to Groq
-          to generate the reply.
+          <strong>Groq</strong> receives the visitor's question and retrieved website context when a chatbot is
+          configured to use Groq.
         </li>
         <li>
-          OpenRouter and the model provider you choose through it: the same data, only when you select OpenRouter.
-          Their terms and billing apply to that use.
+          <strong>OpenRouter</strong> receives the same prompt when a chatbot is configured to use OpenRouter. The
+          selected model provider may also process it through OpenRouter.
         </li>
         <li>
-          Email delivery provider: <Todo>name of the SMTP provider, once configured</Todo>.
+          <strong>Hosting and database providers</strong> process service requests and stored application data. The
+          repository's deployment configuration references Render for the API and Vercel for the frontend; the
+          production database provider and region are not specified here.
         </li>
       </ul>
-      <p>We may also disclose information when the law requires it or to protect the service and its users.</p>
-
-      <h2>Keeping and deleting data</h2>
       <p>
-        Deleting a chatbot from your dashboard removes that chatbot together with its stored pages, embeddings and
-        conversations. There is currently no self-service way to delete your whole account; to request it, contact us.
-        Server logs and backups are kept by our providers for their own retention periods:{" "}
-        <Todo>retention periods once confirmed</Todo>.
+        These providers process information under their own terms and privacy practices. We may also disclose
+        information when required by law or to protect the service, its users or others.
       </p>
 
-      <h2>Your choices and rights</h2>
+      <h2>Storage, deletion and retention</h2>
       <p>
-        You can ask us to access, correct or delete your personal data by contacting us. Depending on where you live,
-        you may have additional legal rights: <Todo>rights and legal bases that apply in the operator's jurisdiction</Todo>.
+        Deleting a chatbot in the dashboard removes that chatbot and its associated pages, text chunks, conversations
+        and messages from the application database. This does not remove an owner's saved OpenRouter key; the owner can
+        remove that key separately in Settings. The app does not provide self-service account deletion. To request
+        account or personal-data deletion, or to request access or correction, contact{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+      </p>
+      <p>
+        The application does not define a time-based retention schedule. Data in provider backups and service logs may
+        be subject to separate provider policies; their retention periods and deletion behavior depend on the production
+        configuration.
+      </p>
+
+      <h2>Your privacy rights</h2>
+      <p>
+        Privacy rights depend on the laws that apply where you live and on the service operator's circumstances. Contact
+        us at <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> to make a privacy request.
       </p>
 
       <h2>Security</h2>
       <p>
-        Traffic to Site2Chat uses HTTPS, and stored provider API keys are encrypted. No system is completely secure, so
-        we cannot guarantee absolute security.
+        Owner-only API actions require a valid Supabase authentication token, and saved OpenRouter keys are encrypted
+        before database storage using a server-configured encryption key. Other safeguards depend on the deployed
+        infrastructure. No online service can promise absolute security.
       </p>
 
-      <h2>Children</h2>
-      <p>Site2Chat is not directed at children, and we do not knowingly collect their personal data.</p>
-
-      <h2>Changes</h2>
-      <p>If we change this policy we will update this page and its effective date.</p>
+      <h2>Changes and contact</h2>
+      <p>
+        If this policy changes, the revised text will be published on this page. Questions or privacy requests can be
+        sent to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. See also our{" "}
+        <Link to="/terms">Terms of Service</Link>.
+      </p>
     </LegalLayout>
   );
 }

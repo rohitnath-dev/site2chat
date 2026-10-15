@@ -39,20 +39,3 @@ export default function LegalLayout({ title, children }: { title: string; childr
     </div>
   );
 }
-
-/** Visible marker for information only the site owner can supply. Never fill these with guesses. */
-export function Todo({ children }: { children: ReactNode }) {
-  return <span className="todo">[To be provided: {children}]</span>;
-}
-
-export function DraftNotice() {
-  return (
-    <div className="alert alert-warn" style={{ margin: "14px 0 24px" }}>
-      <div>
-        <strong>Initial draft.</strong> This text was written from how Site2Chat currently works. It has not been
-        reviewed by a lawyer, and the items marked “To be provided” still need real details from the operator before
-        launch.
-      </div>
-    </div>
-  );
-}

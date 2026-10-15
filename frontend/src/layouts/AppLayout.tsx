@@ -41,14 +41,15 @@ export default function AppLayout() {
               </span>
             </Link>
             <button
-              className="icon-btn"
-              aria-label="Sign out"
+              className="icon-btn app-nav-logout"
+              aria-label="Logout"
               onClick={async () => {
                 await signOut();
                 navigate("/", { replace: true });
               }}
             >
-              <LogOut size={17} />
+              <LogOut size={16} aria-hidden="true" />
+              <span aria-hidden="true">Logout</span>
             </button>
           </nav>
         </div>
