@@ -112,3 +112,18 @@ def test_missing_credentials_and_unset_url(server, monkeypatch):
     assert info.value.status_code == 401
     monkeypatch.setattr(settings, "SUPABASE_URL", "")
     assert status_of("a.b.c") == 503
+
+
+def test_dns_failure_reports_host_and_errno(monkeypatch):
+    import socket
+    import urllib.error
+
+    from core import jwks_check
+
+    monkeypatch.setattr(settings, "SUPABASE_URL", "https://no-such-project.supabase.co")
+    exc = urllib.error.URLError(socket.gaierror(-2, "Name or service not known"))
+    message = jwks_check.describe_connection_error(exc)
+    assert "DNS lookup failed" in message
+    assert "'no-such-project.supabase.co'" in message
+    assert "errno=-2" in message
+    assert "Name or service not known" in message

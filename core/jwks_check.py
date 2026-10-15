@@ -7,6 +7,7 @@ here reads or returns tokens, keys or secrets.
 import json
 import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from core.config import settings
@@ -18,6 +19,14 @@ JWKS_HEADERS = {"User-Agent": "site2chat-api/1.0"}
 
 def jwks_url() -> str:
     return f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+
+def jwks_host() -> str | None:
+    """Hostname of the configured Supabase URL (not a secret: it is public in the frontend bundle)."""
+    try:
+        return urllib.parse.urlsplit(jwks_url()).hostname
+    except ValueError:
+        return None
 
 
 def _http_hint(code: int) -> str:
@@ -44,7 +53,14 @@ def describe_connection_error(exc: BaseException) -> str:
         reason = cause.reason
         if isinstance(reason, (TimeoutError, socket.timeout)):
             return f"timed out after {JWKS_TIMEOUT_SECONDS}s"
-        return f"could not connect ({type(reason).__name__})"
+        if isinstance(reason, socket.gaierror):
+            # DNS lookup failed: name the host and the exact resolver error.
+            return (
+                f"DNS lookup failed for host {jwks_host()!r} "
+                f"(gaierror errno={reason.errno}: {reason.strerror}). "
+                "Check SUPABASE_URL on the server is the exact project URL."
+            )
+        return f"could not connect to {jwks_host()!r} ({type(reason).__name__})"
     if isinstance(cause, (TimeoutError, socket.timeout)):
         return f"timed out after {JWKS_TIMEOUT_SECONDS}s"
     return type(cause).__name__
@@ -61,6 +77,7 @@ def check_jwks() -> dict:
     """Fetch the JWKS the same way the login check does and report what happened."""
     result: dict = {
         "supabase_configured": bool(settings.SUPABASE_URL),
+        "jwks_host": jwks_host() if settings.SUPABASE_URL else None,
         "jwks_reachable": False,
         "jwks_http_status": None,
         "jwks_key_count": None,
