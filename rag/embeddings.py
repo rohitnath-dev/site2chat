@@ -1,6 +1,7 @@
 
 import hashlib
 import logging
+import threading
 import math
 import os
 import time
@@ -65,14 +66,23 @@ class EmbeddingService:
             chunk_overlap=chunk_overlap,
             separators=["\n\n", "\n", ". ", " ", ""],
         )
-        self.provider = os.getenv("EMBEDDING_PROVIDER", "huggingface").strip().lower()
+        self.provider = os.getenv("EMBEDDING_PROVIDER", "local").strip().lower()
         self.hf_token = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN") or ""
         self.openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or ""
         self.timeout = int(os.getenv("EMBEDDING_TIMEOUT", "30"))
+        self._local_model = None
+        self._model_lock = threading.RLock()
 
     def load_model(self) -> None:
-        """Compatibility hook: ensure configuration is loaded without local weight allocation."""
-        pass
+        """Lazily load the local ONNX embedding model once per process."""
+        with self._model_lock:
+            if self._local_model is None:
+                from fastembed import TextEmbedding
+                logger.info("Loading local embedding model: %s", self.model_name)
+                self._local_model = TextEmbedding(
+                    model_name=self.model_name,
+                    threads=1,
+                )
 
     def chunk_documents(
         self,
@@ -104,6 +114,21 @@ class EmbeddingService:
                 })
 
         return chunks
+
+    def _embed_local(
+        self, texts: list[str], batch_size: int
+    ) -> list[list[float]]:
+        """Generate embeddings locally with bounded ONNX inference batches."""
+        self.load_model()
+        with self._model_lock:
+            results = self._local_model.embed(
+                texts,
+                batch_size=min(batch_size, 4),
+            )
+            return [
+                vector.tolist() if hasattr(vector, "tolist") else list(vector)
+                for vector in results
+            ]
 
     def _embed_huggingface(self, texts: list[str]) -> list[list[float]]:
         """Request embeddings from Hugging Face Serverless Inference API."""
@@ -228,12 +253,18 @@ class EmbeddingService:
         # Process in bounded batches to conserve network buffers and avoid payload size limits
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
-            if self.provider in ("openai", "openrouter"):
+            if self.provider in ("local", "fastembed"):
+                vectors = self._embed_local(batch, batch_size=4)
+            elif self.provider in ("openai", "openrouter"):
                 vectors = self._embed_openai_compatible(batch)
             elif self.provider == "mock":
                 vectors = [_deterministic_mock_embedding(t) for t in batch]
-            else:
+            elif self.provider == "huggingface":
                 vectors = self._embed_huggingface(batch)
+            else:
+                raise ValueError(
+                    f"Unsupported EMBEDDING_PROVIDER: {self.provider}"
+                )
 
             # Validate dimensions strictly
             for v in vectors:
