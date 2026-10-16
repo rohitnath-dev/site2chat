@@ -318,9 +318,6 @@ select {
   gap: 12px;
   min-height: 68px;
 }
-.container.nav {
-  flex-wrap: wrap;
-}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -344,9 +341,6 @@ select {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-.app-nav-logout span {
-  display: none;
 }
 
 /* App shell */
@@ -918,46 +912,31 @@ select {
 
 @media (max-width: 720px) {
   .app-header .container.nav {
-    min-height: 0;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding-left: clamp(8px, 2.5vw, 16px);
+    padding-right: clamp(8px, 2.5vw, 16px);
+  }
+  .app-header .brand {
+    gap: 8px;
+    font-size: 17px;
+    flex-shrink: 1;
+    min-width: 0;
   }
   .app-header .nav-links {
-    flex: 0 0 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
   }
-  .app-header .nav-links > * {
-    width: 100%;
-    min-width: 0;
-    min-height: 44px;
-  }
-  .app-header .nav-links .btn-label-hide {
-    display: inline;
-  }
-  .app-header .nav-links .btn {
-    gap: 6px;
-    padding-right: 8px;
-    padding-left: 8px;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .app-header .nav-links .app-nav-logout {
-    display: inline-flex;
-    justify-content: center;
-    gap: 6px;
+  .app-header .nav-links .btn-sm {
     padding: 0 8px;
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    background: var(--surface);
-    color: var(--text);
     font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
   }
-  .app-header .nav-links .app-nav-logout span {
-    display: inline;
+  .app-header .icon-btn {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
   }
   .footer-grid {
     grid-template-columns: 1fr 1fr;
@@ -992,6 +971,30 @@ select {
 }
 
 @media (max-width: 380px) {
+  .app-header .container.nav {
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 6px;
+  }
+  .app-header .brand {
+    font-size: 15px;
+    gap: 6px;
+  }
+  .app-header .brand-mark {
+    width: 26px;
+    height: 26px;
+  }
+  .app-header .nav-links {
+    gap: 2px;
+  }
+  .app-header .nav-links .btn-sm {
+    padding: 0 6px;
+    font-size: 12.5px;
+  }
+  .app-header .icon-btn {
+    width: 32px;
+    height: 32px;
+  }
   .auth-card {
     padding: 20px;
   }
