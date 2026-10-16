@@ -20,7 +20,7 @@ DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIM = 384
 
 HF_INFERENCE_URL = (
-    "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
+    "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
 )
 OPENROUTER_EMBEDDING_URL = "https://openrouter.ai/api/v1/embeddings"
 OPENAI_EMBEDDING_URL = "https://api.openai.com/v1/embeddings"
