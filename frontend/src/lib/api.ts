@@ -26,6 +26,22 @@ export interface IngestResult {
   failures: { url: string; error: string }[];
 }
 
+export interface IngestJobStatus {
+  status: string;
+  chatbot_id: string;
+  job_id: string | null;
+  stage: string | null;
+  pages_discovered: number;
+  pages_saved: number;
+  chunks_saved: number;
+  pages_failed: number;
+  error_message: string | null;
+  created_at?: string | null;
+  completed_at?: string | null;
+  failures?: { url: string; error: string }[];
+}
+
+
 export interface ChatReply {
   status: string;
   chatbot_id: string;
@@ -204,7 +220,62 @@ export const api = {
   deleteChatbot: (id: string) =>
     request<{ status: string; message: string }>(`/chatbots/${id}`, { method: "DELETE" }),
 
-  ingest: (id: string) => request<IngestResult>(`/chatbots/${id}/ingest`, { method: "POST" }),
+  getIngestStatus: (id: string) =>
+    request<IngestJobStatus>(`/chatbots/${id}/ingest/status`),
+
+  ingest: async (
+    id: string,
+    onProgress?: (status: IngestJobStatus) => void,
+    timeoutMs = 300_000,
+  ): Promise<IngestResult> => {
+    // Trigger background ingestion (or return existing active job)
+    const initial = await request<IngestJobStatus>(`/chatbots/${id}/ingest`, { method: "POST" });
+    if (onProgress) onProgress(initial);
+
+    // If already complete immediately (e.g. sync mode)
+    if (initial.status === "completed" || initial.status === "ready" || initial.status === "partial") {
+      return {
+        status: initial.pages_failed > 0 ? "partial" : "success",
+        chatbot_id: id,
+        pages_discovered: initial.pages_discovered,
+        pages_saved: initial.pages_saved,
+        chunks_saved: initial.chunks_saved,
+        pages_failed: initial.pages_failed,
+        failures: initial.failures || [],
+      };
+    }
+
+    // Poll until terminal state (completed or failed)
+    const started = Date.now();
+    const pollInterval = 1500;
+
+    while (Date.now() - started < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      const current = await request<IngestJobStatus>(`/chatbots/${id}/ingest/status`);
+      if (onProgress) onProgress(current);
+
+      if (current.status === "completed" || current.status === "ready" || current.status === "partial") {
+        return {
+          status: current.pages_failed > 0 ? "partial" : "success",
+          chatbot_id: id,
+          pages_discovered: current.pages_discovered,
+          pages_saved: current.pages_saved,
+          chunks_saved: current.chunks_saved,
+          pages_failed: current.pages_failed,
+          failures: current.failures || [],
+        };
+      }
+
+      if (current.status === "failed") {
+        throw new ApiError(500, current.error_message || "Website ingestion failed. Please try again.");
+      }
+    }
+
+    throw new ApiError(
+      0,
+      "Website setup is taking longer than usual. Please check your dashboard in a moment."
+    );
+  },
 
   getOpenRouterStatus: async (): Promise<boolean> => {
     const data = await request<{ configured: boolean }>("/chatbots/credentials/openrouter");

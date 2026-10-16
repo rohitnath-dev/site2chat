@@ -127,7 +127,9 @@ export default function Dashboard() {
                 <div className="stat-label">Partially ready</div>
               </div>
               <div className="card stat">
-                <div className="stat-value">{count("pending")}</div>
+                <div className="stat-value">
+                  {count("pending") + count("queued") + count("running")}
+                </div>
                 <div className="stat-label">Pending</div>
               </div>
             </div>
@@ -146,7 +148,7 @@ export default function Dashboard() {
                     {bot.description && <p className="bot-desc">{bot.description}</p>}
                   </div>
                   <div className="bot-actions">
-                    {bot.status === "pending" && (
+                    {(bot.status === "pending" || bot.status === "failed") && (
                       <button
                         className="btn btn-sm btn-primary"
                         onClick={() => void finishSetup(bot)}
@@ -158,10 +160,15 @@ export default function Dashboard() {
                           </>
                         ) : (
                           <>
-                            <RefreshCw size={14} /> Finish setup
+                            <RefreshCw size={14} /> {bot.status === "failed" ? "Retry setup" : "Finish setup"}
                           </>
                         )}
                       </button>
+                    )}
+                    {(bot.status === "queued" || bot.status === "running") && (
+                      <span className="btn btn-sm" style={{ opacity: 0.8, cursor: "default" }}>
+                        <span className="spinner" /> Reading site…
+                      </span>
                     )}
                     <a
                       className="btn btn-sm"

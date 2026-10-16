@@ -34,6 +34,8 @@ export function Alert({
 export function StatusBadge({ status }: { status: ChatbotStatus }) {
   if (status === "ready") return <span className="badge badge-ready">Ready</span>;
   if (status === "partial") return <span className="badge badge-partial">Partially ready</span>;
+  if (status === "failed") return <span className="badge badge-failed">Failed</span>;
+  if (status === "queued" || status === "running") return <span className="badge">Processing</span>;
   if (status === "pending") return <span className="badge">Pending</span>;
   return <span className="badge">{status}</span>;
 }

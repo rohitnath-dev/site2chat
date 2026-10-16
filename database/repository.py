@@ -10,6 +10,7 @@ from database.models import (
     Conversation,
     Message,
     DocumentChunk,
+    IngestionJob,
 )
 
 
@@ -403,3 +404,96 @@ def delete_user_openrouter_key(db: Session, *, owner_id: str) -> None:
     except Exception:
         db.rollback()
         raise
+
+
+# -------------------------
+# INGESTION JOBS
+# -------------------------
+
+def create_ingestion_job(
+    db: Session,
+    *,
+    chatbot_id: UUID,
+    status: str = "queued",
+    stage: str = "discovering",
+) -> IngestionJob:
+    job = IngestionJob(
+        chatbot_id=chatbot_id,
+        status=status,
+        stage=stage,
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    return job
+
+
+def get_ingestion_job(db: Session, job_id: UUID) -> IngestionJob | None:
+    return db.get(IngestionJob, job_id)
+
+
+def get_latest_ingestion_job(
+    db: Session, chatbot_id: UUID
+) -> IngestionJob | None:
+    statement = (
+        select(IngestionJob)
+        .where(IngestionJob.chatbot_id == chatbot_id)
+        .order_by(IngestionJob.created_at.desc())
+        .limit(1)
+    )
+    return db.scalar(statement)
+
+
+def get_active_ingestion_job(
+    db: Session, chatbot_id: UUID
+) -> IngestionJob | None:
+    statement = (
+        select(IngestionJob)
+        .where(
+            IngestionJob.chatbot_id == chatbot_id,
+            IngestionJob.status.in_(["queued", "running"]),
+        )
+        .order_by(IngestionJob.created_at.desc())
+        .limit(1)
+    )
+    return db.scalar(statement)
+
+
+def update_ingestion_job(
+    db: Session,
+    job_id: UUID,
+    *,
+    status: str | None = None,
+    stage: str | None = None,
+    pages_discovered: int | None = None,
+    pages_saved: int | None = None,
+    chunks_saved: int | None = None,
+    pages_failed: int | None = None,
+    error_message: str | None = None,
+    completed_at=None,
+) -> IngestionJob | None:
+    job = db.get(IngestionJob, job_id)
+    if job is None:
+        return None
+
+    if status is not None:
+        job.status = status
+    if stage is not None:
+        job.stage = stage
+    if pages_discovered is not None:
+        job.pages_discovered = pages_discovered
+    if pages_saved is not None:
+        job.pages_saved = pages_saved
+    if chunks_saved is not None:
+        job.chunks_saved = chunks_saved
+    if pages_failed is not None:
+        job.pages_failed = pages_failed
+    if error_message is not None:
+        job.error_message = error_message
+    if completed_at is not None:
+        job.completed_at = completed_at
+
+    db.commit()
+    db.refresh(job)
+    return job
+

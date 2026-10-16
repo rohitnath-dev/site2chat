@@ -55,6 +55,44 @@ class Chatbot(Base):
     conversations: Mapped[list["Conversation"]] = relationship(
         back_populates="chatbot", cascade="all, delete-orphan"
     )
+    ingestion_jobs: Mapped[list["IngestionJob"]] = relationship(
+        back_populates="chatbot", cascade="all, delete-orphan"
+    )
+
+
+class IngestionJob(Base):
+    __tablename__ = "ingestion_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    chatbot_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chatbots.id", ondelete="CASCADE"),
+        nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="queued", index=True
+    )
+    stage: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, default="discovering"
+    )
+    pages_discovered: Mapped[int] = mapped_column(default=0, nullable=False)
+    pages_saved: Mapped[int] = mapped_column(default=0, nullable=False)
+    chunks_saved: Mapped[int] = mapped_column(default=0, nullable=False)
+    pages_failed: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(),
+        onupdate=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    chatbot: Mapped["Chatbot"] = relationship(back_populates="ingestion_jobs")
 
 
 class WebsitePage(Base):

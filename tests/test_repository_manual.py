@@ -1,11 +1,14 @@
+import os
 import uuid
+import pytest
 
 from database.connection import SessionLocal
 from database.models import Chatbot
 from database import repository
 
 
-def run_test():
+@pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="DATABASE_URL not configured")
+def test_repository_manual_flow():
     db = SessionLocal()
     chatbot = None
     owner_id = f"manual-test-{uuid.uuid4().hex}"

@@ -1,37 +1,26 @@
 # API
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydantic==2.7.1
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.1
+pydantic>=2.7.1
 
 # Configuration and HTTP
-python-dotenv==1.0.1
-requests==2.32.3
-beautifulsoup4==4.12.3
+python-dotenv>=1.0.1
+requests>=2.32.3
+beautifulsoup4>=4.12.3
 
 # Database
-SQLAlchemy==2.0.30
-psycopg[binary]==3.1.19
-pgvector==0.2.5
-alembic==1.13.1
+SQLAlchemy>=2.0.30
+psycopg[binary]>=3.1.19
+pgvector>=0.2.5
+alembic>=1.13.1
 
 # Authentication and encrypted customer credentials
 PyJWT[crypto]>=2.8,<3
 cryptography>=42,<46
 
-# LLM orchestration
-langchain==0.2.3
-langchain-core==0.2.5
-langchain-community==0.2.4
-langchain-text-splitters==0.2.1
-langgraph==0.0.55
+# Text chunking
+langchain-text-splitters>=0.2.1
 
-# Embeddings and model dependencies (Python 3.11 deployment target)
-numpy>=1.23,<2
-sentence-transformers==2.2.2
-transformers==4.36.2
-torch==2.2.2
-huggingface-hub==0.20.3
+# Embeddings and vector utilities
+numpy>=1.23,<3
 
-# Existing RAG implementation dependencies
-faiss-cpu==1.7.4
-streamlit==1.35.0

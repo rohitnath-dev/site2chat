@@ -125,12 +125,14 @@ export default function Create() {
         llmSavedRef.current = true;
       }
 
-      // Visual waiting stages only: the ingest API reports no live progress.
       setStage(1);
-      timers.current.push(window.setTimeout(() => setStage((s) => Math.max(s, 2)), 5000));
-      timers.current.push(window.setTimeout(() => setStage((s) => Math.max(s, 3)), 15000));
-
-      const res = await api.ingest(target.id);
+      const res = await api.ingest(target.id, (job) => {
+        if (job.stage === "discovering") setStage(1);
+        else if (job.stage === "crawling") setStage(2);
+        else if (job.stage === "embedding") setStage(3);
+        else if (job.stage === "persisting") setStage(4);
+        else if (job.stage === "completed" || job.status === "completed") setStage(STAGES.length);
+      });
       clearTimers();
       setStage(STAGES.length);
       setResult(res);

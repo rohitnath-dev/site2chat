@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from database import repository
 from database.connection import get_db
 from database.models import Chatbot
 from rag.crawler import validate_website_url
-from rag.ingestion import ingest_website
+from rag.ingestion import ingest_website, run_background_ingest
 
 
 router = APIRouter(prefix="/chatbots", tags=["Chatbots"])
@@ -103,6 +103,16 @@ def create_chatbot(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> Chatbot:
+    # Deduplication guard: reuse existing active/pending chatbot with same website
+    # to prevent accidental duplicates on retry or connection drops
+    existing = repository.list_chatbots(db, owner_id=current_user["sub"], limit=10)
+    for bot in existing:
+        if (
+            bot.website_url == payload.website_url
+            and bot.status in ("pending", "queued", "running")
+        ):
+            return bot
+
     return repository.create_chatbot(
         db,
         name=payload.name,
@@ -110,6 +120,7 @@ def create_chatbot(
         description=payload.description,
         owner_id=current_user["sub"],
     )
+
 
 
 @router.get("/{chatbot_id}", response_model=ChatbotResponse)
@@ -171,6 +182,8 @@ def delete_chatbot(
 @router.post("/{chatbot_id}/ingest")
 def ingest_chatbot_website(
     chatbot_id: UUID,
+    background_tasks: BackgroundTasks,
+    sync: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict:
@@ -183,26 +196,114 @@ def ingest_chatbot_website(
             detail="Chatbot not found.",
         )
 
-    try:
-        return ingest_website(db, chatbot_id, max_pages=100)
-    except ValueError as exc:
-        db.rollback()
+    # Check if an active ingestion job is already running
+    active_job = repository.get_active_ingestion_job(db, chatbot_id)
+    if active_job:
+        return {
+            "status": active_job.status,
+            "chatbot_id": str(chatbot_id),
+            "job_id": str(active_job.id),
+            "stage": active_job.stage,
+            "pages_discovered": active_job.pages_discovered,
+            "pages_saved": active_job.pages_saved,
+            "chunks_saved": active_job.chunks_saved,
+            "pages_failed": active_job.pages_failed,
+            "failures": [],
+        }
+
+    job = repository.create_ingestion_job(
+        db, chatbot_id=chatbot_id, status="queued", stage="discovering"
+    )
+    chatbot.status = "queued"
+    db.commit()
+
+    if sync:
+        try:
+            return ingest_website(db, chatbot_id, max_pages=100, job_id=job.id)
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        except RuntimeError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Website ingestion failed. Check server logs.",
+            ) from exc
+        except Exception as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Website ingestion failed.",
+            ) from exc
+
+    # Launch background ingestion job
+    background_tasks.add_task(
+        run_background_ingest,
+        job.id,
+        chatbot_id,
+        max_pages=100,
+    )
+    return {
+        "status": "queued",
+        "chatbot_id": str(chatbot_id),
+        "job_id": str(job.id),
+        "stage": "discovering",
+        "pages_discovered": 0,
+        "pages_saved": 0,
+        "chunks_saved": 0,
+        "pages_failed": 0,
+        "failures": [],
+    }
+
+
+@router.get("/{chatbot_id}/ingest/status")
+def get_chatbot_ingest_status(
+    chatbot_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    chatbot = repository.get_chatbot(
+        db, chatbot_id, owner_id=current_user["sub"]
+    )
+    if chatbot is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except RuntimeError as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Website ingestion failed. Check server logs.",
-        ) from exc
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Website ingestion failed.",
-        ) from exc
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chatbot not found.",
+        )
+
+    job = repository.get_latest_ingestion_job(db, chatbot_id)
+    if job is None:
+        return {
+            "status": chatbot.status,
+            "chatbot_id": str(chatbot_id),
+            "job_id": None,
+            "stage": None,
+            "pages_discovered": 0,
+            "pages_saved": 0,
+            "chunks_saved": 0,
+            "pages_failed": 0,
+            "error_message": None,
+            "failures": [],
+        }
+
+    return {
+        "status": job.status,
+        "chatbot_id": str(chatbot_id),
+        "job_id": str(job.id),
+        "stage": job.stage,
+        "pages_discovered": job.pages_discovered,
+        "pages_saved": job.pages_saved,
+        "chunks_saved": job.chunks_saved,
+        "pages_failed": job.pages_failed,
+        "error_message": job.error_message,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "failures": [],
+    }
+
 
 
 @router.put(

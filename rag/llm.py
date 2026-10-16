@@ -97,46 +97,81 @@ def _invoke_chat_completion(
     prompt: str,
     timeout: int,
 ) -> str:
-    """Shared request and response handling for both providers."""
+    """Shared request and response handling with bounded retries for transient provider errors."""
+    import time
 
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("Prompt must be a non-empty string.")
 
-    response = requests.post(
-        api_url,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": model,
-            "messages": [
-                {"role": "user", "content": prompt.strip()}
-            ],
-            "temperature": 0.2,
-            "max_tokens": MAX_TOKENS,
-        },
-        timeout=timeout,
-    )
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt.strip()}
+        ],
+        "temperature": 0.2,
+        "max_tokens": MAX_TOKENS,
+    }
 
-    response.raise_for_status()
+    last_error: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(
+                api_url,
+                headers=headers,
+                json=payload,
+                timeout=timeout,
+            )
+            # Handle rate-limit with retry-after header
+            if response.status_code == 429 and attempt < 3:
+                retry_after = 1.5 * attempt
+                try:
+                    header_val = float(response.headers.get("Retry-After", ""))
+                    if 0 < header_val <= 10:
+                        retry_after = header_val
+                except ValueError:
+                    pass
+                time.sleep(retry_after)
+                continue
 
-    result = response.json()
-    choices = result.get("choices", [])
+            # Handle transient upstream errors
+            if response.status_code in (502, 503, 504) and attempt < 3:
+                time.sleep(1.0 * attempt)
+                continue
 
-    if not choices:
-        raise RuntimeError(
-            "The LLM provider returned no response choices."
-        )
+            response.raise_for_status()
 
-    content = choices[0].get("message", {}).get("content")
+            result = response.json()
+            choices = result.get("choices", [])
 
-    if not isinstance(content, str) or not content.strip():
-        raise RuntimeError(
-            "The LLM provider returned an empty response."
-        )
+            if not choices:
+                raise RuntimeError(
+                    "The LLM provider returned no response choices."
+                )
 
-    return content.strip()
+            content = choices[0].get("message", {}).get("content")
+
+            if not isinstance(content, str) or not content.strip():
+                raise RuntimeError(
+                    "The LLM provider returned an empty response."
+                )
+
+            return content.strip()
+
+        except requests.exceptions.RequestException as exc:
+            last_error = exc
+            if attempt < 3:
+                time.sleep(1.0 * attempt)
+                continue
+            raise RuntimeError(f"LLM provider request failed: {exc}") from exc
+
+    if last_error:
+        raise RuntimeError(f"LLM provider request failed: {last_error}") from last_error
+    raise RuntimeError("LLM provider returned no response.")
+
 
 
 def get_llm(

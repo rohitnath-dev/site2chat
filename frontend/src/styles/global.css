@@ -270,6 +270,10 @@ select {
   background: var(--warn-soft);
   color: var(--warn);
 }
+.badge-failed {
+  background: #fdf2f2;
+  color: #c81e1e;
+}
 
 /* Spinner */
 .spinner {
