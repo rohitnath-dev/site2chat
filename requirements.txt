@@ -22,5 +22,6 @@ cryptography>=42,<46
 langchain-text-splitters>=0.2.1
 
 # Embeddings and vector utilities
+fastembed>=0.7.0,<1.0
 numpy>=1.23,<3
 
