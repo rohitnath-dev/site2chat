@@ -51,7 +51,7 @@ helpful.
 - If the question is ambiguous and the ambiguity materially affects
   the answer, ask one concise clarifying question.
 
-## 5. Missing or Irrelevant Context.
+## 5. Missing or Irrelevant Context
 
 When no relevant information is available:
 - Do not invent an answer.
