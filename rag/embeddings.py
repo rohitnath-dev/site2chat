@@ -157,6 +157,7 @@ class EmbeddingService:
                             return vectors
                 except Exception as exc:
                     last_error = exc
+                    logger.warning("HF endpoint %s failed (attempt %s): %s", url, attempt + 1, exc)
                     if attempt < 2:
                         time.sleep(1.0)
                         continue
