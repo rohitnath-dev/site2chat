@@ -161,14 +161,16 @@ class EmbeddingService:
                         time.sleep(1.0)
                         continue
 
+        is_test = os.getenv("ENVIRONMENT", "").strip().lower() == "test"
         if last_error:
-            logger.warning("HF Inference embedding call failed: %s. Using fallback.", last_error)
-            # If HF Inference is unreachable or unconfigured in dev/test, fallback cleanly
-            if not self.hf_token or os.getenv("ENVIRONMENT") == "test":
+            logger.warning("HF Inference embedding call failed: %s", last_error)
+            if is_test:
                 return [_deterministic_mock_embedding(t) for t in texts]
             raise RuntimeError(f"Hugging Face embedding inference failed: {last_error}") from last_error
 
-        return [_deterministic_mock_embedding(t) for t in texts]
+        if is_test:
+            return [_deterministic_mock_embedding(t) for t in texts]
+        raise RuntimeError("Hugging Face returned an unexpected embedding response.")
 
     def _embed_openai_compatible(self, texts: list[str]) -> list[list[float]]:
         """Request 384-dimensional embeddings from OpenAI or OpenRouter."""
@@ -263,4 +265,4 @@ class EmbeddingService:
         return chunks
 
 
-embedding_service = EmbeddingService()
+embedding_service = EmbeddingService()

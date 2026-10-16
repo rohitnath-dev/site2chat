@@ -59,3 +59,35 @@ def test_embedding_service_embed_documents_mock():
     assert len(embedded) == 1
     assert "embedding" in embedded[0]
     assert len(embedded[0]["embedding"]) == 384
+
+def test_huggingface_request_failure_raises_in_production(monkeypatch):
+    service = EmbeddingService()
+    service.hf_token = "hf-test-token"
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setattr("rag.embeddings.time.sleep", lambda *_: None)
+
+    def fail_request(*args, **kwargs):
+        raise RuntimeError("network unavailable")
+
+    monkeypatch.setattr("rag.embeddings.requests.post", fail_request)
+    with pytest.raises(RuntimeError, match="Hugging Face embedding inference failed"):
+        service._embed_huggingface(["example text"])
+
+
+def test_huggingface_invalid_response_raises_in_production(monkeypatch):
+    class BadResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"error": "unexpected payload"}
+
+    service = EmbeddingService()
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setattr("rag.embeddings.time.sleep", lambda *_: None)
+    monkeypatch.setattr(
+        "rag.embeddings.requests.post", lambda *args, **kwargs: BadResponse()
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected embedding response"):
+        service._embed_huggingface(["example text"])
