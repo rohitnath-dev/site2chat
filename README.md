@@ -14,6 +14,16 @@
 
 Site2Chat is a FastAPI backend and React + Vite frontend that together provide a workflow for creating chatbots from website content. The backend validates website URLs, ingests site pages into a PostgreSQL + pgvector model, stores page and chunk records, and exposes authenticated routes for chatbot management and retrieval-augmented chat. The frontend in `frontend/` provides a dashboard and chat experience for end users and chatbot owners.
 
+---
+
+## Preview
+
+![Site2Chat homepage preview](assets/site2chat-demo.jpeg)
+
+*Create a chatbot from any website and share it or embed it on your site.*
+
+---
+
 ## Table of contents
 
 - [Project overview](#project-overview)
