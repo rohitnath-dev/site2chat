@@ -420,21 +420,19 @@ Do not assume unsupported deployment, runtime, or scaling claims beyond the repo
 
 ## Contributing
 
-This repository does not currently include a root `CONTRIBUTING.md` file or a code of conduct file. Standard GitHub contribution flow is appropriate:
+Contributions to Site2Chat are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
-1. Create a branch for your change.
+1. Fork the repository and create a branch for your changes.
 2. Keep changes focused and easy to review.
-3. Open a pull request for review.
+3. Run relevant tests and checks.
+4. Open a pull request against `main` with a clear description of your changes.
 
-No guarantee is made that all contributions will be accepted. Review and maintainer approval remain part of the project process.
+All contributions are subject to maintainer review and approval.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License, as shown in the root `LICENSE` file.
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
-The copyright notice in that file is:
-
-> Copyright (c) 2026 Rohit
-
+Copyright (c) 2026 Rohit
