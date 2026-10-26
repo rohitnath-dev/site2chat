@@ -6,6 +6,7 @@ import { chatLink, copyText, displayHost } from "../lib/utils";
 import { Alert, Modal, StatusBadge } from "../components/ui";
 import { SharePanel } from "../components/SharePanel";
 import { ProviderModal } from "../components/ProviderModal";
+import { ProviderNotices, relevantIssues, useAiStatus } from "../components/ProviderNotice";
 import { useToast } from "../components/Toast";
 
 export default function Dashboard() {
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [deleteBot, setDeleteBot] = useState<Chatbot | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const { status: aiStatus, refresh: refreshAiStatus } = useAiStatus();
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -85,6 +87,8 @@ export default function Dashboard() {
           <Plus size={17} /> Create chatbot
         </Link>
       </div>
+
+      <ProviderNotices issues={relevantIssues(aiStatus, bots)} />
 
       {loadError && (
         <div style={{ marginBottom: 20 }}>
@@ -207,7 +211,17 @@ export default function Dashboard() {
         </Modal>
       )}
 
-      {providerBot && <ProviderModal bot={providerBot} onClose={() => setProviderBot(null)} />}
+      {providerBot && (
+        <ProviderModal
+          bot={providerBot}
+          onClose={() => {
+            setProviderBot(null);
+            // The provider may have changed: reload so warnings reflect the chatbots' current providers.
+            void load();
+            void refreshAiStatus();
+          }}
+        />
+      )}
 
       {deleteBot && (
         <Modal title="Delete chatbot?" onClose={() => (deleting ? undefined : setDeleteBot(null))}>

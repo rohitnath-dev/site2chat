@@ -10,6 +10,14 @@ from core.secret_store import CredentialEncryptionError, encrypt_secret
 from database import repository
 from database.connection import get_db
 from database.models import Chatbot
+from rag.provider_errors import (
+    CODE_CREDITS,
+    CODE_KEY_INVALID,
+    DEFAULT_SCOPE,
+    clear_issue,
+    get_issue,
+    owner_scope,
+)
 from rag.crawler import validate_website_url
 from rag.ingestion import ingest_website, run_background_ingest
 
@@ -63,6 +71,8 @@ class ChatbotResponse(BaseModel):
     website_url: str
     public_id: str
     status: str
+    llm_provider: str = "groq"
+    llm_model: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -323,6 +333,8 @@ def save_openrouter_key(
             owner_id=current_user["sub"],
             encrypted_api_key=encrypted,
         )
+        # A new key deserves a fresh start: drop any stale warning about the old one.
+        clear_issue(owner_scope(current_user["sub"]))
     except CredentialEncryptionError as exc:
         db.rollback()
         raise HTTPException(
@@ -335,6 +347,29 @@ def save_openrouter_key(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Credential could not be saved.",
         ) from exc
+
+
+@router.get("/credentials/ai-status")
+def ai_provider_status(
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, dict[str, str]]:
+    """Confirmed provider problems only (credits/billing or a rejected key); everything else is "ok"."""
+    default_issue = get_issue(DEFAULT_SCOPE)
+    own_issue = get_issue(owner_scope(current_user["sub"]))
+    return {
+        "default_provider": {
+            "status": "credits_exhausted" if default_issue == CODE_CREDITS else "ok"
+        },
+        "own_openrouter": {
+            "status": (
+                "credits_exhausted"
+                if own_issue == CODE_CREDITS
+                else "key_invalid"
+                if own_issue == CODE_KEY_INVALID
+                else "ok"
+            )
+        },
+    }
 
 
 @router.get("/credentials/openrouter")
@@ -355,6 +390,7 @@ def remove_openrouter_key(
 ) -> dict[str, str]:
     try:
         repository.delete_user_openrouter_key(db, owner_id=current_user["sub"])
+        clear_issue(owner_scope(current_user["sub"]))
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(

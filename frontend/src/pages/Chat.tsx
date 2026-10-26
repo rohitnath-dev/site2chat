@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { MessageCircle, RefreshCw, Send } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { getSessionId, isUuid } from "../lib/utils";
 import { Alert } from "../components/ui";
+import { useAuth } from "../lib/auth";
 
 interface Msg {
   id: number;
@@ -15,12 +16,14 @@ interface Failure {
   text: string;
   message: string;
   status: number | null;
+  code: string | null;
 }
 
 export default function Chat() {
   const { chatbotId = "" } = useParams();
   const [params] = useSearchParams();
   const embed = params.get("embed") === "1";
+  const { session } = useAuth();
   const label = (params.get("name") || "").trim().slice(0, 80) || "Website assistant";
 
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -54,6 +57,7 @@ export default function Chat() {
           text,
           message: err instanceof Error ? err.message : "Something went wrong.",
           status: err instanceof ApiError ? err.status : null,
+          code: err instanceof ApiError ? (err.code ?? null) : null,
         });
       } finally {
         sendingRef.current = false;
@@ -132,6 +136,12 @@ export default function Chat() {
                           ? "This chatbot could not be found. It may have been removed."
                           : failure.message}
                     </div>
+                    {failure.code === "chatbot_unavailable" && session && !embed && (
+                      <p style={{ marginTop: 8 }}>
+                        Is this your chatbot? <Link to="/settings">Open your AI provider settings</Link> to see how to fix
+                        this.
+                      </p>
+                    )}
                     {!notFound && (
                       <button
                         className="btn btn-sm"

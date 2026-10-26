@@ -14,6 +14,13 @@ export interface Chatbot {
   website_url: string;
   public_id: string;
   status: ChatbotStatus;
+  llm_provider?: Provider;
+}
+
+/** Confirmed AI provider problems for the signed-in owner. Anything uncertain is reported as "ok". */
+export interface AiStatus {
+  default_provider: { status: "ok" | "credits_exhausted" };
+  own_openrouter: { status: "ok" | "credits_exhausted" | "key_invalid" };
 }
 
 export interface IngestResult {
@@ -54,10 +61,13 @@ export type Provider = "groq" | "openrouter";
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Safe machine-readable error code from the backend (e.g. "chatbot_unavailable"), when present. */
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -91,15 +101,16 @@ function friendly(status: number, detail: string | null, context: "management" |
   }
 }
 
-async function readDetail(res: Response): Promise<string | null> {
+async function readError(res: Response): Promise<{ detail: string | null; code?: string }> {
   const text = await res.text().catch(() => "");
-  if (!text) return null;
+  if (!text) return { detail: null };
   try {
     const body = JSON.parse(text);
+    const code = typeof body?.code === "string" ? body.code : undefined;
     const d = body?.detail;
-    if (typeof d === "string") return d;
+    if (typeof d === "string") return { detail: d, code };
     if (Array.isArray(d)) {
-      return d
+      const detail = d
         .map((item) => {
           const loc = Array.isArray(item?.loc) ? item.loc.filter((p: unknown) => p !== "body").join(".") : "";
           const msg = typeof item?.msg === "string" ? item.msg.replace(/^Value error, /, "") : "";
@@ -107,10 +118,11 @@ async function readDetail(res: Response): Promise<string | null> {
         })
         .filter(Boolean)
         .join(" ");
+      return { detail, code };
     }
-    return null;
+    return { detail: null, code };
   } catch {
-    return null; // non-JSON error body
+    return { detail: null }; // non-JSON error body
   }
 }
 
@@ -184,8 +196,8 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    const detail = await readDetail(res);
-    throw new ApiError(res.status, friendly(res.status, detail, context));
+    const { detail, code } = await readError(res);
+    throw new ApiError(res.status, friendly(res.status, detail, context), code);
   }
 
   if (res.status === 204) return undefined as T;
@@ -281,6 +293,8 @@ export const api = {
     const data = await request<{ configured: boolean }>("/chatbots/credentials/openrouter");
     return !!data?.configured;
   },
+
+  getAiStatus: (): Promise<AiStatus> => request<AiStatus>("/chatbots/credentials/ai-status"),
 
   saveOpenRouterKey: (api_key: string) =>
     request<void>("/chatbots/credentials/openrouter", { method: "PUT", body: { api_key } }),

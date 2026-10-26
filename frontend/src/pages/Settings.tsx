@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Alert } from "../components/ui";
+import { ProviderNotices, useAiStatus, type ProviderIssue } from "../components/ProviderNotice";
 import { useToast } from "../components/Toast";
 
 export default function Settings() {
@@ -15,6 +16,13 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { status: aiStatus, refresh: refreshAiStatus } = useAiStatus();
+
+  // Settings is where the key is fixed, so show every confirmed problem here (the key section is on this page).
+  const issues: ProviderIssue[] = [];
+  if (aiStatus?.default_provider.status === "credits_exhausted") issues.push("default_credits");
+  if (aiStatus?.own_openrouter.status === "credits_exhausted") issues.push("own_credits");
+  if (aiStatus?.own_openrouter.status === "key_invalid") issues.push("own_key_invalid");
 
   useEffect(() => {
     document.title = "Settings · Site2Chat";
@@ -44,6 +52,7 @@ export default function Settings() {
       setConfigured(true);
       setStatusError(null);
       toast.show("OpenRouter key saved");
+      void refreshAiStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save the key.");
     } finally {
@@ -58,6 +67,7 @@ export default function Settings() {
       await api.removeOpenRouterKey();
       setConfigured(false);
       toast.show("OpenRouter key removed");
+      void refreshAiStatus();
     } catch (err) {
       toast.show(err instanceof Error ? err.message : "Couldn't remove the key", "error");
     } finally {
@@ -70,6 +80,8 @@ export default function Settings() {
       <h1 className="display" style={{ fontSize: "clamp(32px, 6vw, 44px)", marginBottom: 24 }}>
         Settings
       </h1>
+
+      <ProviderNotices issues={issues} showSettingsLink={false} />
 
       <section className="card section">
         <h2 className="display">Account</h2>

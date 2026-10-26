@@ -1,15 +1,19 @@
 from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from database.connection import get_db
 from database import repository
+from rag.provider_errors import CODE_CREDITS, CODE_KEY_INVALID, CODE_RATE_LIMITED, ProviderError
 from rag.rag import rag_service
 
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+VISITOR_UNAVAILABLE_MESSAGE = "This chatbot is temporarily unable to respond. Please try again later."
 
 
 class ChatRequest(BaseModel):
@@ -99,6 +103,30 @@ def send_message(
             conversation_id=str(conversation.id),
             message=message,
             reply=reply,
+        )
+
+    except ProviderError as exc:
+        db.rollback()
+        # Visitors only ever get a neutral message and a safe code. Details stay in the server log.
+        if exc.code in (CODE_CREDITS, CODE_KEY_INVALID):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": VISITOR_UNAVAILABLE_MESSAGE, "code": "chatbot_unavailable"},
+            )
+        if exc.code == CODE_RATE_LIMITED:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "This chatbot is busy right now. Please try again in a moment.",
+                    "code": "chatbot_busy",
+                },
+            )
+        return JSONResponse(
+            status_code=502,
+            content={
+                "detail": "The chatbot could not generate a response. Please try again.",
+                "code": "chatbot_error",
+            },
         )
 
     except ValueError as exc:

@@ -1,7 +1,17 @@
 import os
+import time
 
 import requests
 from dotenv import load_dotenv
+
+from rag.provider_errors import (
+    CODE_UNAVAILABLE,
+    RETRYABLE_CODES,
+    CODE_RATE_LIMITED,
+    ProviderError,
+    classify,
+    log_failure,
+)
 
 
 load_dotenv()
@@ -47,6 +57,7 @@ class GroqLLM:
         """Send a prompt to Groq and return the generated text."""
         return _invoke_chat_completion(
             api_url=GROQ_API_URL,
+            provider="groq",
             api_key=self.api_key,
             model=self.model,
             prompt=prompt,
@@ -82,6 +93,7 @@ class OpenRouterLLM:
         """Send a prompt to OpenRouter and return the generated text."""
         return _invoke_chat_completion(
             api_url=OPENROUTER_API_URL,
+            provider="openrouter",
             api_key=self.api_key,
             model=self.model,
             prompt=prompt,
@@ -96,9 +108,13 @@ def _invoke_chat_completion(
     model: str,
     prompt: str,
     timeout: int,
+    provider: str = "unknown",
 ) -> str:
-    """Shared request and response handling with bounded retries for transient provider errors."""
-    import time
+    """Shared request handling. Transient failures are retried; billing and key errors are not.
+
+    Failures raise ProviderError carrying only a safe code. Provider response bodies are logged
+    (redacted) on the server and never returned to callers.
+    """
 
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("Prompt must be a non-empty string.")
@@ -116,7 +132,6 @@ def _invoke_chat_completion(
         "max_tokens": MAX_TOKENS,
     }
 
-    last_error: Exception | None = None
     for attempt in range(1, 4):
         try:
             response = requests.post(
@@ -125,53 +140,57 @@ def _invoke_chat_completion(
                 json=payload,
                 timeout=timeout,
             )
-            # Handle rate-limit with retry-after header
-            if response.status_code == 429 and attempt < 3:
-                retry_after = 1.5 * attempt
-                try:
-                    header_val = float(response.headers.get("Retry-After", ""))
-                    if 0 < header_val <= 10:
-                        retry_after = header_val
-                except ValueError:
-                    pass
-                time.sleep(retry_after)
-                continue
-
-            # Handle transient upstream errors
-            if response.status_code in (502, 503, 504) and attempt < 3:
-                time.sleep(1.0 * attempt)
-                continue
-
-            response.raise_for_status()
-
-            result = response.json()
-            choices = result.get("choices", [])
-
-            if not choices:
-                raise RuntimeError(
-                    "The LLM provider returned no response choices."
-                )
-
-            content = choices[0].get("message", {}).get("content")
-
-            if not isinstance(content, str) or not content.strip():
-                raise RuntimeError(
-                    "The LLM provider returned an empty response."
-                )
-
-            return content.strip()
-
         except requests.exceptions.RequestException as exc:
-            last_error = exc
             if attempt < 3:
                 time.sleep(1.0 * attempt)
                 continue
-            raise RuntimeError(f"LLM provider request failed: {exc}") from exc
+            log_failure(provider, None, CODE_UNAVAILABLE, None, api_key)
+            raise ProviderError(CODE_UNAVAILABLE, provider) from exc
 
-    if last_error:
-        raise RuntimeError(f"LLM provider request failed: {last_error}") from last_error
-    raise RuntimeError("LLM provider returned no response.")
+        http_status = response.status_code
+        if isinstance(http_status, int) and http_status >= 400:
+            try:
+                body = response.json()
+            except ValueError:
+                body = None
+            code = classify(http_status, body)
 
+            # Billing (402 and confirmed quota errors) and key errors are never retried.
+            retryable = code in RETRYABLE_CODES and http_status in (429, 502, 503, 504)
+            if retryable and attempt < 3:
+                delay = 1.0 * attempt
+                if code == CODE_RATE_LIMITED:
+                    delay = 1.5 * attempt
+                    try:
+                        header_val = float(response.headers.get("Retry-After", ""))
+                        if 0 < header_val <= 10:
+                            delay = header_val
+                    except (ValueError, TypeError):
+                        pass
+                time.sleep(delay)
+                continue
+
+            log_failure(provider, http_status, code, body, api_key)
+            raise ProviderError(code, provider, http_status)
+
+        result = response.json()
+        choices = result.get("choices", [])
+
+        if not choices:
+            raise RuntimeError(
+                "The LLM provider returned no response choices."
+            )
+
+        content = choices[0].get("message", {}).get("content")
+
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError(
+                "The LLM provider returned an empty response."
+            )
+
+        return content.strip()
+
+    raise ProviderError(CODE_UNAVAILABLE, provider)
 
 
 def get_llm(

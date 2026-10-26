@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database import repository
 from rag.embeddings import embedding_service
 from rag.llm import get_llm
+from rag.provider_errors import DEFAULT_SCOPE, ProviderError, clear_issue, owner_scope, record_issue
 from core.secret_store import decrypt_secret
 
 
@@ -109,7 +110,18 @@ class RAGService:
             "Answer:"
         )
 
-        answer = llm.invoke(prompt)
+        # Track provider health per credential: the shared default key, or this owner's own key.
+        scope = (
+            owner_scope(chatbot.owner_id)
+            if chatbot.llm_provider == "openrouter" and chatbot.owner_id
+            else DEFAULT_SCOPE
+        )
+        try:
+            answer = llm.invoke(prompt)
+        except ProviderError as exc:
+            record_issue(scope, exc.code)
+            raise
+        clear_issue(scope)
 
         if not isinstance(answer, str) or not answer.strip():
             raise RuntimeError("The LLM returned an empty answer.")
