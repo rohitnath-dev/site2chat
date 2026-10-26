@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { MessageCircle, RefreshCw, Send } from "lucide-react";
 import { api, ApiError } from "../lib/api";
@@ -17,6 +19,25 @@ interface Failure {
   message: string;
   status: number | null;
   code: string | null;
+}
+
+// Raw HTML is never rendered (react-markdown's default). Images are dropped so a reply can't load remote
+// content; links open in a new tab; wide tables scroll inside the bubble instead of widening the page.
+const markdownComponents: Components = {
+  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+  table: ({ node: _node, ...props }) => (
+    <div className="md-table">
+      <table {...props} />
+    </div>
+  ),
+};
+
+function BotMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} components={markdownComponents}>
+      {text}
+    </ReactMarkdown>
+  );
 }
 
 export default function Chat() {
@@ -111,8 +132,8 @@ export default function Chat() {
               )}
 
               {messages.map((m) => (
-                <div key={m.id} className={`msg ${m.role === "user" ? "msg-user" : "msg-bot"}`}>
-                  {m.text}
+                <div key={m.id} className={`msg ${m.role === "user" ? "msg-user" : "msg-bot md"}`}>
+                  {m.role === "user" ? m.text : <BotMarkdown text={m.text} />}
                 </div>
               ))}
 

@@ -836,6 +836,107 @@ select {
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
 }
+/* Markdown in assistant replies */
+.msg-bot.md {
+  white-space: normal;
+  line-height: 1.5;
+  min-width: 0;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md p,
+.md ul,
+.md ol,
+.md pre,
+.md blockquote,
+.md .md-table {
+  margin: 0 0 10px;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 14px 0 6px;
+}
+.md h1 {
+  font-size: 18px;
+}
+.md h2 {
+  font-size: 17px;
+}
+.md h3,
+.md h4 {
+  font-size: 15px;
+}
+.md ul,
+.md ol {
+  padding-left: 22px;
+}
+.md li {
+  margin-bottom: 3px;
+}
+.md a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--surface-muted);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.md pre {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.md pre code {
+  background: none;
+  padding: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.md blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 12px;
+  color: var(--text-muted);
+}
+.md .md-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.md table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.md th,
+.md td {
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+.md th {
+  background: var(--surface-muted);
+  font-weight: 600;
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
 .msg-error {
   align-self: flex-start;
   max-width: 100%;
