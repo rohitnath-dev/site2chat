@@ -102,7 +102,7 @@ export default function Chat() {
               {messages.length === 0 && !failure && (
                 <div className="chat-empty">
                   <h2 className="display">Ask me anything</h2>
-                  <p>I answer questions using the content of this website.</p>
+                  <p>I'm your AI assistant. How can I help?</p>
                 </div>
               )}
 
