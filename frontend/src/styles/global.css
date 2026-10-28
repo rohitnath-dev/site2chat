@@ -633,7 +633,8 @@ select {
   background: rgba(20, 36, 27, 0.4);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   z-index: 50;
   animation: fade-in var(--t) var(--ease);
 }
@@ -642,6 +643,8 @@ select {
   max-width: 560px;
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 24px;
   background: var(--surface);
   border-radius: var(--radius-lg);
@@ -653,9 +656,48 @@ select {
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 16px;
+  /* Keep the close button reachable while the dialog scrolls. */
+  position: sticky;
+  top: -24px;
+  margin-top: -24px;
+  padding-top: 24px;
+  padding-bottom: 8px;
+  background: var(--surface);
+  z-index: 1;
 }
 .modal-head h2 {
   font-size: 28px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modal p {
+  overflow-wrap: anywhere;
+}
+.link-preview {
+  display: flex;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.link-preview span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.share-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.share-actions .btn {
+  min-height: 40px;
+  min-width: 0;
 }
 .copy-block {
   position: relative;
@@ -676,6 +718,8 @@ select {
   padding: 12px 14px;
   white-space: pre-wrap;
   word-break: break-all;
+  max-width: 100%;
+  overflow-x: auto;
   margin: 0 0 8px;
 }
 .toast {
@@ -1108,5 +1152,18 @@ select {
   }
   .modal {
     padding: 20px;
+  }
+  .modal-head {
+    top: -20px;
+    margin-top: -20px;
+    padding-top: 20px;
+  }
+  .modal-head h2 {
+    font-size: 24px;
+  }
+}
+@media (max-width: 400px) {
+  .share-actions {
+    grid-template-columns: 1fr;
   }
 }
