@@ -65,7 +65,7 @@ export default function Signup() {
         <div style={{ color: "var(--accent)", marginBottom: 10 }}>
           <Mail size={30} aria-hidden="true" />
         </div>
-        <h1 className="display">Confirm your Site2Chat account</h1>
+        <h1 className="display">Check your email</h1>
         {resumed && (
           <div style={{ margin: "10px 0" }}>
             <Alert kind="info">
@@ -75,15 +75,19 @@ export default function Signup() {
           </div>
         )}
         <p className="muted" style={{ margin: "10px 0 14px" }}>
-          We've asked our email service to send a confirmation link to <strong>{email.trim()}</strong>. It usually
-          arrives within a few minutes, but we can't see whether it was delivered. If it doesn't arrive, use the resend
-          button below.
+          We've sent a confirmation link to <strong>{email.trim()}</strong>.
         </p>
-        <ul className="muted" style={{ margin: "0 0 20px", paddingLeft: 20, fontSize: 14 }}>
-          <li>Check spam, junk and promotions folders.</li>
-          <li>Make sure the address above is spelled correctly.</li>
-          <li>Open the link on this device's browser to be signed in automatically.</li>
-        </ul>
+        <p className="muted" style={{ margin: "0 0 14px" }}>
+          The email is sent through Supabase, so the sender may appear as Supabase rather than Site2Chat. This is
+          expected for our current setup.
+        </p>
+        <p className="muted" style={{ margin: "0 0 14px" }}>
+          Open the email and click the confirmation link to verify your account and continue. Open it in this
+          device's browser to be signed in automatically.
+        </p>
+        <p className="muted" style={{ margin: "0 0 20px" }}>
+          Can't find the email? Check your spam or junk folder, or use the resend button below.
+        </p>
         <ResendConfirmation email={email.trim()} initialLockSeconds={30} />
         <p className="hint" style={{ marginTop: 18 }}>
           Wrong address?{" "}
