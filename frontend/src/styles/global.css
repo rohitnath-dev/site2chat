@@ -981,6 +981,10 @@ select {
   margin: 12px 0;
 }
 
+.msg-status {
+  color: var(--text-muted);
+  animation: fade-in var(--t) var(--ease);
+}
 .msg-error {
   align-self: flex-start;
   max-width: 100%;

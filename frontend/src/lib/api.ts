@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { createSseParser } from "./sse";
 
 const RAW_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 export const API_ROOT = (RAW_BASE || "https://site2chat-api.onrender.com").replace(/\/+$/, "");
@@ -55,6 +56,14 @@ export interface ChatReply {
   conversation_id: string;
   message: string;
   reply: string;
+}
+
+/** Real backend stages reported while a reply is being prepared. Text arriving means the reply is being written. */
+export type ChatStage = "searching" | "preparing";
+
+export interface ChatStreamHandlers {
+  onStage: (stage: ChatStage) => void;
+  onText: (text: string) => void;
 }
 
 export type Provider = "groq" | "openrouter";
@@ -301,6 +310,81 @@ export const api = {
 
   removeOpenRouterKey: () =>
     request<{ status: string }>("/chatbots/credentials/openrouter", { method: "DELETE" }),
+
+  /**
+   * Streams a reply from POST /chat/stream. Resolves once the server reports the reply complete.
+   * Rejects with ApiError for HTTP errors, error events and interrupted streams, and with an
+   * AbortError (DOMException) when `signal` is aborted.
+   */
+  streamChat: async (
+    chatbot_id: string,
+    message: string,
+    session_id: string,
+    handlers: ChatStreamHandlers,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    let res: Response;
+    try {
+      res = await fetch(`${API}/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ chatbot_id, message, session_id }),
+        signal,
+      });
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      throw new ApiError(0, friendly(0, null, "chat"));
+    }
+
+    if (!res.ok) {
+      const { detail, code } = await readError(res);
+      throw new ApiError(res.status, friendly(res.status, detail, "chat"), code);
+    }
+    if (!res.body) throw new ApiError(0, "The server sent an empty response. Please try again.");
+
+    const interrupted = () => new ApiError(0, "The reply was interrupted. Please try again.");
+    let finished = false;
+
+    const parser = createSseParser(({ event, data }) => {
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(data);
+      } catch {
+        return; // ignore a malformed event rather than failing the whole reply
+      }
+      if (event === "status") {
+        if (payload.stage === "searching" || payload.stage === "preparing") handlers.onStage(payload.stage);
+      } else if (event === "delta") {
+        if (typeof payload.text === "string" && payload.text) handlers.onText(payload.text);
+      } else if (event === "done") {
+        finished = true;
+      } else if (event === "error") {
+        const code = typeof payload.code === "string" ? payload.code : undefined;
+        const detail = typeof payload.detail === "string" ? payload.detail : null;
+        throw new ApiError(code === "chatbot_error" ? 502 : 503, detail || friendly(502, null, "chat"), code);
+      }
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8"); // stream: true keeps characters split across chunks intact
+    try {
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parser.push(decoder.decode(value, { stream: true }));
+      }
+      if (!finished) {
+        parser.push(decoder.decode());
+        parser.end();
+      }
+    } catch (e) {
+      if (e instanceof ApiError || signal?.aborted) throw e;
+      throw interrupted();
+    } finally {
+      reader.cancel().catch(() => undefined); // releases the connection (and stops the server) if still open
+    }
+    if (!finished) throw interrupted();
+  },
 
   sendChat: (chatbot_id: string, message: string, session_id: string) =>
     request<ChatReply>("/chat/", {

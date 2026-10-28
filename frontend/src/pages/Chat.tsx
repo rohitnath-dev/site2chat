@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type Keyboard
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { MessageCircle, RefreshCw, Send } from "lucide-react";
-import { api, ApiError } from "../lib/api";
+import { MessageCircle, RefreshCw, Send, Square } from "lucide-react";
+import { api, ApiError, type ChatStage } from "../lib/api";
 import { getSessionId, isUuid } from "../lib/utils";
 import { Alert } from "../components/ui";
 import { useAuth } from "../lib/auth";
@@ -19,7 +19,17 @@ interface Failure {
   message: string;
   status: number | null;
   code: string | null;
+  /** Partial reply left on screen by an interrupted stream; removed when the user retries. */
+  partialId: number | null;
 }
+
+// Labels only for stages the backend actually reports. "sending" is the time before the first report.
+const STAGE_LABELS: Record<"sending" | ChatStage, string> = {
+  sending: "Sending your question…",
+  searching: "Searching website content…",
+  preparing: "Preparing an answer…",
+};
+const SLOW_AFTER_MS = 8000;
 
 // Raw HTML is never rendered (react-markdown's default). Images are dropped so a reply can't load remote
 // content; links open in a new tab; wide tables scroll inside the bubble instead of widening the page.
@@ -51,6 +61,10 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
+  const [stage, setStage] = useState<"sending" | ChatStage>("sending");
+  const [streamingId, setStreamingId] = useState<number | null>(null);
+  const [slow, setSlow] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const nextId = useRef(1);
   const endRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
@@ -61,27 +75,79 @@ export default function Chat() {
   }, [label]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, sending, failure]);
+    endRef.current?.scrollIntoView({ behavior: sending ? "auto" : "smooth", block: "end" });
+  }, [messages, sending, failure, stage]);
+
+  // Leaving the page cancels the request, which also stops the server from generating further.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  // If one stage lasts unusually long, say so honestly instead of leaving the same text on screen.
+  useEffect(() => {
+    setSlow(false);
+    if (!sending || streamingId !== null) return;
+    const t = window.setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => window.clearTimeout(t);
+  }, [sending, stage, streamingId]);
 
   const deliver = useCallback(
-    async (text: string) => {
+    async (text: string, dropId: number | null = null) => {
       if (sendingRef.current) return;
       sendingRef.current = true;
       setSending(true);
       setFailure(null);
+      setStage("sending");
+      if (dropId !== null) setMessages((m) => m.filter((x) => x.id !== dropId));
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let botId: number | null = null;
+      let reply = "";
+      let frame = 0;
+      const paint = () => {
+        frame = 0;
+        const shown = reply;
+        setMessages((m) => m.map((x) => (x.id === botId ? { ...x, text: shown } : x)));
+      };
+
       try {
-        const res = await api.sendChat(chatbotId, text, getSessionId(chatbotId));
-        setMessages((m) => [...m, { id: nextId.current++, role: "bot", text: res.reply }]);
-      } catch (err) {
-        setFailure({
+        await api.streamChat(
+          chatbotId,
           text,
-          message: err instanceof Error ? err.message : "Something went wrong.",
-          status: err instanceof ApiError ? err.status : null,
-          code: err instanceof ApiError ? (err.code ?? null) : null,
-        });
+          getSessionId(chatbotId),
+          {
+            onStage: setStage,
+            onText: (piece) => {
+              reply += piece;
+              if (botId === null) {
+                // First text: replace the status line with the answer straight away.
+                const id = nextId.current++;
+                botId = id;
+                setMessages((m) => [...m, { id, role: "bot", text: reply }]);
+                setStreamingId(id);
+              } else if (!frame) {
+                frame = window.requestAnimationFrame(paint); // at most one re-render per frame
+              }
+            },
+          },
+          controller.signal,
+        );
+        if (botId === null) throw new ApiError(502, "The chatbot returned an empty reply. Please try again.");
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setFailure({
+            text,
+            message: err instanceof Error ? err.message : "Something went wrong.",
+            status: err instanceof ApiError ? err.status : null,
+            code: err instanceof ApiError ? (err.code ?? null) : null,
+            partialId: botId,
+          });
+        }
       } finally {
+        if (frame) window.cancelAnimationFrame(frame);
+        if (botId !== null) paint(); // make sure the final text is what is on screen
+        abortRef.current = null;
         sendingRef.current = false;
+        setStreamingId(null);
         setSending(false);
       }
     },
@@ -137,13 +203,10 @@ export default function Chat() {
                 </div>
               ))}
 
-              {sending && (
-                <div className="msg msg-bot" aria-label="Assistant is typing">
-                  <span className="typing">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
+              {sending && streamingId === null && (
+                <div className="msg msg-bot msg-status" role="status" aria-live="polite" key={stage}>
+                  {STAGE_LABELS[stage]}
+                  {slow && <span> This is taking longer than usual.</span>}
                 </div>
               )}
 
@@ -167,7 +230,7 @@ export default function Chat() {
                       <button
                         className="btn btn-sm"
                         style={{ marginTop: 10 }}
-                        onClick={() => void deliver(failure.text)}
+                        onClick={() => void deliver(failure.text, failure.partialId)}
                       >
                         <RefreshCw size={14} /> Try again
                       </button>
@@ -197,14 +260,25 @@ export default function Chat() {
             onKeyDown={onKey}
             disabled={!validId}
           />
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={sending || !input.trim() || !validId}
-            aria-label="Send message"
-          >
-            <Send size={16} />
-          </button>
+          {sending ? (
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => abortRef.current?.abort()}
+              aria-label="Stop generating"
+            >
+              <Square size={16} />
+            </button>
+          ) : (
+            <button
+              className="btn btn-primary"
+              type="submit"
+              disabled={!input.trim() || !validId}
+              aria-label="Send message"
+            >
+              <Send size={16} />
+            </button>
+          )}
         </div>
       </form>
 
