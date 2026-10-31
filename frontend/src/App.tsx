@@ -14,6 +14,10 @@ import NotFound from "./pages/NotFound";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
+import VsCompetitor from "./pages/VsCompetitor";
+import ForPlatform from "./pages/ForPlatform";
+import UseCase from "./pages/UseCase";
+import Faq from "./pages/Faq";
 import { useAuth } from "./lib/auth";
 import { authCallback } from "./lib/supabase";
 
@@ -41,7 +45,10 @@ export default function App() {
     <>
       <CallbackRedirect />
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/vs/:competitor" element={<VsCompetitor />} />
+        <Route path="/for/:platform" element={<ForPlatform />} />
+        <Route path="/use-case/:case" element={<UseCase />} />
+        <Route path="/faq" element={<Faq />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -55,6 +62,7 @@ export default function App() {
           <Route path="/create" element={<Create />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
+        <Route path="/" element={<Landing />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
