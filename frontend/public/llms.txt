@@ -1,0 +1,41 @@
+# Site2Chat
+
+> Turn any website into an AI chatbot in 2 minutes.
+
+Site2Chat is a fast, lightweight platform that automatically crawls and reads your public website pages, converts them into a searchable vector knowledge base, and deploys an interactive AI chatbot that answers visitor questions with verified citations from your site.
+
+## Key Features
+
+- **Automated Web Ingestion**: Provide any website URL; Site2Chat crawls up to 100 pages, extracts clean content, chunks the text, and computes high-dimensional embeddings.
+- **Flexible AI Models**: Supports ultra-fast inference via Groq (Llama 3.3 70B Versatile) and multi-model access through OpenRouter with Bring-Your-Own-Key (BYOK) support.
+- **Accurate RAG Retrieval**: Answers are strictly grounded in your site's ingested content to prevent hallucinations and provide exact answers.
+- **Easy Sharing & Embedding**: Instant standalone public chat link, plus a lightweight one-line `<script>` tag to embed a customized floating chat widget on any CMS or site builder.
+- **Privacy & Security**: Secure Supabase authentication, encrypted provider API keys, and isolated chatbot data.
+
+## Popular Comparisons
+- Site2Chat vs Tidio: https://site2chat.vercel.app/vs/tidio
+- Site2Chat vs Intercom: https://site2chat.vercel.app/vs/intercom
+- Site2Chat vs Chatbase: https://site2chat.vercel.app/vs/chatbase
+- Site2Chat vs Crisp: https://site2chat.vercel.app/vs/crisp
+- Site2Chat vs Zendesk: https://site2chat.vercel.app/vs/zendesk
+
+## Platform Integrations
+- WordPress: https://site2chat.vercel.app/for/wordpress
+- Shopify: https://site2chat.vercel.app/for/shopify
+- Webflow: https://site2chat.vercel.app/for/webflow
+- Wix: https://site2chat.vercel.app/for/wix
+- Squarespace: https://site2chat.vercel.app/for/squarespace
+- Framer: https://site2chat.vercel.app/for/framer
+
+## Use Cases
+- Customer Support: https://site2chat.vercel.app/use-case/customer-support
+- Lead Generation: https://site2chat.vercel.app/use-case/lead-generation
+- E-commerce: https://site2chat.vercel.app/use-case/ecommerce
+- SaaS: https://site2chat.vercel.app/use-case/saas
+- Documentation: https://site2chat.vercel.app/use-case/internal-docs
+
+## Support & Resources
+- Frequently Asked Questions: https://site2chat.vercel.app/faq
+- Terms of Service: https://site2chat.vercel.app/terms
+- Privacy Policy: https://site2chat.vercel.app/privacy
+- Contact: https://site2chat.vercel.app/contact
