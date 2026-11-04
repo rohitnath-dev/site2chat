@@ -5,43 +5,51 @@ import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
 import { useAuth } from "../lib/auth";
 
-interface FaqItem {
+export interface FaqItem {
   question: string;
   answer: string;
 }
 
-const FAQS: FaqItem[] = [
+export const FAQS: FaqItem[] = [
   {
-    question: "How does Site2Chat create a chatbot from my website?",
-    answer:
-      "Site2Chat reads public pages from your submitted website (up to 100 pages per crawl). It extracts clean text, splits the content into semantic chunks, and creates vector embeddings. When visitors ask questions, Site2Chat retrieves the most relevant excerpts to ground the AI's answers directly in your site's content.",
+    question: "How long does it take to set up Site2Chat?",
+    answer: "2 minutes.",
   },
   {
-    question: "What AI providers and models does Site2Chat support?",
-    answer:
-      "Out of the box, Site2Chat provides ultra-fast inference via Groq running Llama 3.3 70B Versatile with zero configuration. You can also connect your own OpenRouter API key in Settings to use models like Claude 3.5 Sonnet, GPT-4o, and Gemini 2.5 Flash.",
+    question: "Can I train the chatbot on my own website content?",
+    answer: "Yes, it scrapes your URL.",
   },
   {
-    question: "How do I embed the chatbot on my website?",
-    answer:
-      "Simply copy the one-line JavaScript snippet provided in your chatbot's dashboard and paste it right before the closing </body> tag of your website. It works seamlessly on WordPress, Shopify, Webflow, Wix, Squarespace, and custom HTML/React apps.",
+    question: "Does it work on Shopify and WordPress?",
+    answer: "Yes, works on any platform with a 3-line embed code.",
   },
   {
-    question: "Is there a free tier or trial?",
-    answer:
-      "Yes! You can create and test your first chatbot completely free without entering a credit card. Ingest your website, test responses in real time, and deploy your widget in minutes.",
+    question: "Is Site2Chat free?",
+    answer: "Yes, free tier available.",
   },
 ];
 
 export default function Faq() {
   const { session } = useAuth();
-  const cta = session ? "/create" : "/signup";
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
 
   useEffect(() => {
     const pageTitle = "Frequently Asked Questions · Site2Chat";
     const pageDesc =
-      "Got questions about Site2Chat? Learn how website ingestion works, supported AI models (Groq, OpenRouter), embedding guides, and pricing.";
+      "Frequently Asked Questions about Site2Chat. Learn how long setup takes, how website training works, platform compatibility, and pricing.";
     document.title = pageTitle;
 
     let meta = document.querySelector('meta[name="description"]');
@@ -60,6 +68,10 @@ export default function Faq() {
 
   return (
     <div className="shell">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <header className="container nav">
         <Brand />
         <nav className="nav-links" aria-label="Main">
@@ -157,17 +169,14 @@ export default function Faq() {
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "72px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>
-            Still have questions?
+            Ready to get started?
           </h2>
           <p className="muted" style={{ maxWidth: "44ch", margin: "0 auto 24px" }}>
-            Try it yourself for free or drop us a message anytime.
+            Create your chatbot in 2 minutes and test it with verified answers from your site.
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
-            <Link to={cta} className="btn btn-primary btn-lg">
-              Create Your Chatbot <ArrowRight size={18} />
-            </Link>
-            <Link to="/contact" className="btn btn-ghost btn-lg">
-              Contact Support
+            <Link to="/" className="btn btn-primary btn-lg">
+              Try Site2Chat Free <ArrowRight size={18} />
             </Link>
           </div>
         </section>
