@@ -1,3 +1,5 @@
+Note: Site2Chat is the open-source, 100% free version of the website-to-chatbot tool. We are not affiliated with [site2chat.com](https://site2chat.com/).
+
 # Site2Chat
 
 > Turn any website into an AI chatbot in 2 minutes.

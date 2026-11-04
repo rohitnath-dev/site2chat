@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Code, Sparkles, Globe } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
 export const platforms = [
@@ -238,6 +239,8 @@ export default function ForPlatform() {
             </pre>
           </div>
         </section>
+
+        <RelatedArticles currentCategory="platform" currentSlug={slug} />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "72px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>

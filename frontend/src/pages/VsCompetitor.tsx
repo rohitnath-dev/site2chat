@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Check, X } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
 export const competitors = [
@@ -110,6 +111,34 @@ export default function VsCompetitor() {
           <h1 className="display" style={{ maxWidth: "22ch" }}>
             Site2Chat vs {name}: Which Website Chatbot is Better in 2026?
           </h1>
+
+          <div
+            style={{
+              maxWidth: "700px",
+              margin: "0 auto 24px",
+              padding: "16px 20px",
+              background: "var(--accent-soft, #ecfdf5)",
+              border: "1px solid var(--accent, #10b981)",
+              borderRadius: "8px",
+              textAlign: "left",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "15px", lineHeight: "1.6", color: "var(--text)" }}>
+              <strong>
+                Why Choose Site2Chat? Unlike paid tools like {name} or{" "}
+                <a
+                  href="https://site2chat.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent)", textDecoration: "underline" }}
+                >
+                  site2chat.com
+                </a>
+                , Site2Chat is 100% free and open-source. You don't need a credit card to start. Just paste your URL and embed the chatbot in 2 minutes.
+              </strong>
+            </p>
+          </div>
+
           <p className="lead" style={{ maxWidth: "60ch" }}>
             <strong>
               Site2Chat is a fast, no-code AI chatbot builder that trains on your website content and embeds in 2 minutes. {name} is better for enterprise sales teams with complex workflows.
@@ -192,6 +221,8 @@ export default function VsCompetitor() {
             </p>
           </div>
         </section>
+
+        <RelatedArticles currentCategory="competitor" currentSlug={slug} />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "64px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
 export interface FaqItem {
@@ -166,6 +167,8 @@ export default function Faq() {
             })}
           </div>
         </section>
+
+        <RelatedArticles currentCategory="faq" />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "72px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>

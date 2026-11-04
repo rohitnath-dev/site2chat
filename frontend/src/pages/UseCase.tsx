@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, AlertCircle, CheckCircle2, Bot, Clock, ShieldCheck, Zap } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
 export const useCases = [
@@ -229,6 +230,8 @@ export default function UseCase() {
             </ul>
           </div>
         </section>
+
+        <RelatedArticles currentCategory="use-case" currentSlug={slug} />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "72px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>
