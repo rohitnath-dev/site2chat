@@ -1,24 +1,64 @@
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, Bot, Clock, ShieldCheck, Target, Zap } from "lucide-react";
+import { ArrowRight, AlertCircle, CheckCircle2, Bot, Clock, ShieldCheck, Zap } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
-function formatUseCase(slug?: string): string {
+export const useCases = [
+  "customer-support",
+  "ecommerce",
+  "lead-generation",
+  "saas",
+  "education",
+] as const;
+
+const useCaseDetails: Record<
+  string,
+  { name: string; problem: string; solution: string }
+> = {
+  "customer-support": {
+    name: "Customer Support",
+    problem:
+      "Customer support teams are constantly overwhelmed with repetitive tier-1 inquiries regarding shipping times, business hours, and refund policies. Human agents experience burnout, ticket queues back up, and customers grow frustrated waiting hours for basic answers.",
+    solution:
+      "Site2Chat reads your public help center, knowledge base, and FAQ pages to deliver instant, accurate responses 24/7. Grounded strictly in your website content, it deflects up to 70% of routine questions, allowing your human team to focus on high-value issues.",
+  },
+  ecommerce: {
+    name: "E-Commerce",
+    problem:
+      "Shoppers frequently abandon carts and leave online stores when they cannot quickly find sizing information, shipping estimates, or return policies. Staffing 24/7 live chat agents across global timezones is prohibitively expensive.",
+    solution:
+      "Site2Chat crawls your product catalogs, warranty details, and purchasing policies to serve as an instant on-site shopping assistant. It guides buyers, resolves purchasing hesitations in real time, and helps increase sales conversion rates without extra staff.",
+  },
+  "lead-generation": {
+    name: "Lead Generation",
+    problem:
+      "Static lead capture forms convert poorly because modern visitors want instant answers before submitting contact details. Marketing ad spend is wasted when interested visitors bounce without interacting.",
+    solution:
+      "Site2Chat engages website visitors conversationally the moment they land on your site. By delivering immediate answers to pricing and feature queries, it naturally builds trust and captures high-intent qualified leads directly into your pipeline.",
+  },
+  saas: {
+    name: "SaaS",
+    problem:
+      "Software onboarding suffers high drop-off when new users get stuck on complex documentation, API questions, or configuration setups. Engineering and support teams lose hours repeating explanations.",
+    solution:
+      "Site2Chat transforms your API docs, user manuals, and changelogs into an interactive AI copilot. New signups get instant answers to technical questions directly inside your app, slashing onboarding friction and churn.",
+  },
+  education: {
+    name: "Education",
+    problem:
+      "Schools, universities, and online courses receive thousands of repetitive questions regarding admissions criteria, tuition costs, schedules, and curriculum details, overloading administrative personnel.",
+    solution:
+      "Site2Chat indexes course catalogs, syllabus pages, and campus guidelines to act as a 24/7 student advisor. Students and applicants get immediate answers anytime, streamlining the enrollment process and improving student experience.",
+  },
+};
+
+export function formatUseCaseName(slug?: string): string {
   if (!slug) return "Your Business";
-  const known: Record<string, string> = {
-    "customer-support": "Customer Support",
-    "lead-generation": "Lead Generation",
-    ecommerce: "E-Commerce",
-    saas: "SaaS",
-    "internal-docs": "Internal Documentation",
-    "real-estate": "Real Estate",
-    healthcare: "Healthcare",
-    education: "Education",
-  };
   const key = slug.toLowerCase();
-  if (known[key]) return known[key];
+  if (useCaseDetails[key]) return useCaseDetails[key].name;
   return slug
     .split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
@@ -28,8 +68,15 @@ function formatUseCase(slug?: string): string {
 export default function UseCase() {
   const { case: caseParam } = useParams<{ case: string }>();
   const { session } = useAuth();
-  const name = formatUseCase(caseParam);
-  const cta = session ? "/create" : "/signup";
+  const slug = caseParam || "customer-support";
+  const details = useCaseDetails[slug.toLowerCase()] || {
+    name: formatUseCaseName(slug),
+    problem:
+      "Teams lose precious hours manually replying to repetitive inquiries, causing long customer wait times and lost business opportunities.",
+    solution:
+      "Site2Chat instantly indexes your website content to provide an automated, 24/7 chatbot that answers questions accurately and captures leads around the clock.",
+  };
+  const name = details.name;
 
   useEffect(() => {
     const pageTitle = `AI Chatbot for ${name}: Automate Support and Capture Leads`;
@@ -70,7 +117,7 @@ export default function UseCase() {
 
       <main className="shell-main">
         <section className="container hero">
-          <h1 className="display" style={{ maxWidth: "18ch" }}>
+          <h1 className="display" style={{ maxWidth: "20ch" }}>
             AI Chatbot for {name}: Automate Support and Capture Leads
           </h1>
           <p className="lead" style={{ maxWidth: "56ch" }}>
@@ -78,9 +125,40 @@ export default function UseCase() {
             pages to deliver fast, 24/7 grounded answers to every visitor inquiry.
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-            <Link to={cta} className="btn btn-primary btn-lg">
-              Build Your {name} Chatbot <ArrowRight size={18} />
+            <Link to="/" className="btn btn-primary btn-lg">
+              Try Site2Chat Free <ArrowRight size={18} />
             </Link>
+          </div>
+        </section>
+
+        <section className="container" style={{ paddingBottom: "48px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "24px",
+              marginBottom: "40px",
+            }}
+          >
+            <div className="card" style={{ padding: "32px", borderLeft: "4px solid var(--danger, #ef4444)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                <AlertCircle size={22} color="var(--danger, #ef4444)" />
+                <h2 style={{ fontSize: "22px", margin: 0, fontFamily: "var(--font-sans)" }}>The Problem</h2>
+              </div>
+              <p style={{ color: "var(--text-muted)", lineHeight: "1.7", margin: 0, fontSize: "16px" }}>
+                {details.problem}
+              </p>
+            </div>
+
+            <div className="card" style={{ padding: "32px", borderLeft: "4px solid var(--accent, #16a34a)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                <CheckCircle2 size={22} color="var(--accent, #16a34a)" />
+                <h2 style={{ fontSize: "22px", margin: 0, fontFamily: "var(--font-sans)" }}>The Solution</h2>
+              </div>
+              <p style={{ color: "var(--text-muted)", lineHeight: "1.7", margin: 0, fontSize: "16px" }}>
+                {details.solution}
+              </p>
+            </div>
           </div>
         </section>
 
@@ -91,7 +169,7 @@ export default function UseCase() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
               gap: "20px",
               marginBottom: "36px",
             }}
@@ -120,17 +198,6 @@ export default function UseCase() {
 
             <div className="card" style={{ padding: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                <Target size={20} color="var(--accent)" />
-                <h3 style={{ margin: 0, fontSize: "18px" }}>Higher Lead Conversion</h3>
-              </div>
-              <p className="muted" style={{ margin: 0 }}>
-                Engage visitors at their moment of peak interest. Fast answers remove friction and guide prospects
-                naturally toward signing up or purchasing.
-              </p>
-            </div>
-
-            <div className="card" style={{ padding: "24px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                 <Zap size={20} color="var(--accent)" />
                 <h3 style={{ margin: 0, fontSize: "18px" }}>Zero Training Overhead</h3>
               </div>
@@ -147,21 +214,24 @@ export default function UseCase() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
               <Bot size={22} color="var(--accent)" />
               <h2 style={{ fontSize: "20px", margin: 0, fontFamily: "var(--font-sans)" }}>
-                How {name} Automation Works
+                How Site2Chat Solves {name} in 3 Steps
               </h2>
             </div>
-            <p style={{ color: "var(--text)", lineHeight: "1.6", marginBottom: "16px" }}>
-              Site2Chat connects your online presence with modern AI intelligence. When your site changes or adds new
-              features, re-crawl your domain with a single click to keep the knowledge base up-to-date.
-            </p>
-            <ul style={{ paddingLeft: "20px", lineHeight: "1.7", color: "var(--text-muted)" }}>
-              <li>Extracts pages, documentation, and pricing tables automatically.</li>
-              <li>Generates fast embeddings optimized for semantic search.</li>
-              <li>Delivers answers via shareable chat URL or floating website widget.</li>
-              <li>Lets you bring your own LLM keys or use lightning-fast Groq defaults.</li>
+            <ul style={{ paddingLeft: "20px", lineHeight: "1.8", color: "var(--text-muted)", margin: 0 }}>
+              <li>
+                <strong>1. Automated URL Scraping:</strong> Enter your domain, and Site2Chat automatically indexes up to 100 pages of products, guides, and FAQs.
+              </li>
+              <li>
+                <strong>2. Strict Retrieval-Augmented Generation:</strong> Knowledge chunks and vector embeddings prevent hallucinations by strictly using your site facts.
+              </li>
+              <li>
+                <strong>3. Embed in 2 Minutes:</strong> Copy the 1-line script tag and add it to your website to deploy 24/7 instant chat.
+              </li>
             </ul>
           </div>
         </section>
+
+        <RelatedArticles currentCategory="use-case" currentSlug={slug} />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "72px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>
@@ -170,8 +240,8 @@ export default function UseCase() {
           <p className="muted" style={{ maxWidth: "44ch", margin: "0 auto 24px" }}>
             Turn your site pages into an active AI assistant in less than 2 minutes.
           </p>
-          <Link to={cta} className="btn btn-primary btn-lg">
-            Create Your {name} Chatbot <ArrowRight size={18} />
+          <Link to="/" className="btn btn-primary btn-lg">
+            Try Site2Chat Free <ArrowRight size={18} />
           </Link>
         </section>
       </main>

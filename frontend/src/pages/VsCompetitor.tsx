@@ -3,22 +3,37 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Check, X } from "lucide-react";
 import { Brand } from "../components/ui";
 import { Footer } from "../components/Footer";
+import { RelatedArticles } from "../components/RelatedArticles";
 import { useAuth } from "../lib/auth";
 
-function formatCompetitor(slug?: string): string {
+export const competitors = [
+  "tidio",
+  "intercom",
+  "drift",
+  "manychat",
+  "chatbot-com",
+  "landbot",
+  "tars",
+  "wonderchat",
+  "chatbase",
+] as const;
+
+const competitorNames: Record<string, string> = {
+  tidio: "Tidio",
+  intercom: "Intercom",
+  drift: "Drift",
+  manychat: "ManyChat",
+  "chatbot-com": "Chatbot.com",
+  landbot: "Landbot",
+  tars: "TARS",
+  wonderchat: "Wonderchat",
+  chatbase: "Chatbase",
+};
+
+export function formatCompetitorName(slug?: string): string {
   if (!slug) return "Competitor";
-  const known: Record<string, string> = {
-    tidio: "Tidio",
-    chatbase: "Chatbase",
-    intercom: "Intercom",
-    zendesk: "Zendesk",
-    crisp: "Crisp",
-    drift: "Drift",
-    botpress: "Botpress",
-    voiceflow: "Voiceflow",
-  };
   const key = slug.toLowerCase();
-  if (known[key]) return known[key];
+  if (competitorNames[key]) return competitorNames[key];
   return slug
     .split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
@@ -28,12 +43,31 @@ function formatCompetitor(slug?: string): string {
 export default function VsCompetitor() {
   const { competitor } = useParams<{ competitor: string }>();
   const { session } = useAuth();
-  const name = formatCompetitor(competitor);
-  const cta = session ? "/create" : "/signup";
+  const name = formatCompetitorName(competitor);
+  const slug = competitor || "competitor";
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `Site2Chat vs ${name}: Which Website Chatbot is Better in 2026?`,
+    description: `Site2Chat is a fast, no-code AI chatbot builder that trains on your website content and embeds in 2 minutes. ${name} is better for enterprise sales teams with complex workflows.`,
+    author: {
+      "@type": "Organization",
+      name: "Site2Chat",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Site2Chat",
+      url: "https://site2chat.vercel.app",
+    },
+    datePublished: "2026-01-01T00:00:00Z",
+    dateModified: "2026-11-04T00:00:00Z",
+    mainEntityOfPage: `https://site2chat.vercel.app/vs/${slug}`,
+  };
 
   useEffect(() => {
     const pageTitle = `Site2Chat vs ${name}: Which Website Chatbot is Better in 2026?`;
-    const pageDesc = `Compare Site2Chat vs ${name}. Discover setup times, features, pricing, and see which AI website chatbot is best for your site in 2026.`;
+    const pageDesc = `Site2Chat is a fast, no-code AI chatbot builder that trains on your website content and embeds in 2 minutes. ${name} is better for enterprise sales teams with complex workflows.`;
     document.title = `${pageTitle} · Site2Chat`;
 
     let meta = document.querySelector('meta[name="description"]');
@@ -48,6 +82,10 @@ export default function VsCompetitor() {
 
   return (
     <div className="shell">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <header className="container nav">
         <Brand />
         <nav className="nav-links" aria-label="Main">
@@ -70,15 +108,44 @@ export default function VsCompetitor() {
 
       <main className="shell-main">
         <section className="container hero" style={{ paddingBottom: "32px" }}>
-          <h1 className="display" style={{ maxWidth: "18ch" }}>
+          <h1 className="display" style={{ maxWidth: "22ch" }}>
             Site2Chat vs {name}: Which Website Chatbot is Better in 2026?
           </h1>
-          <p className="lead" style={{ maxWidth: "56ch" }}>
-            Looking for the right AI chatbot solution? Compare Site2Chat and {name} on setup speed, accuracy,
-            AI provider flexibility, and total cost of ownership.
+
+          <div
+            style={{
+              maxWidth: "700px",
+              margin: "0 auto 24px",
+              padding: "16px 20px",
+              background: "var(--accent-soft, #ecfdf5)",
+              border: "1px solid var(--accent, #10b981)",
+              borderRadius: "8px",
+              textAlign: "left",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "15px", lineHeight: "1.6", color: "var(--text)" }}>
+              <strong>
+                Why Choose Site2Chat? Unlike paid tools like {name} or{" "}
+                <a
+                  href="https://site2chat.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent)", textDecoration: "underline" }}
+                >
+                  site2chat.com
+                </a>
+                , Site2Chat is 100% free and open-source. You don't need a credit card to start. Just paste your URL and embed the chatbot in 2 minutes.
+              </strong>
+            </p>
+          </div>
+
+          <p className="lead" style={{ maxWidth: "60ch" }}>
+            <strong>
+              Site2Chat is a fast, no-code AI chatbot builder that trains on your website content and embeds in 2 minutes. {name} is better for enterprise sales teams with complex workflows.
+            </strong>
           </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "8px" }}>
-            <Link to={cta} className="btn btn-primary btn-lg">
+          <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "16px" }}>
+            <Link to="/" className="btn btn-primary btn-lg">
               Try Site2Chat Free <ArrowRight size={18} />
             </Link>
           </div>
@@ -86,66 +153,58 @@ export default function VsCompetitor() {
 
         <section className="container" style={{ maxWidth: "860px", marginBottom: "48px" }}>
           <div className="card" style={{ padding: "28px", overflowX: "auto" }}>
-            <h2 style={{ fontSize: "22px", marginBottom: "20px" }}>Feature Comparison</h2>
+            <h2 style={{ fontSize: "22px", marginBottom: "20px" }}>Comparison Table</h2>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "15px" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)", textAlign: "left" }}>
-                  <th style={{ padding: "12px 14px", color: "var(--text-faint)", fontWeight: 600 }}>Feature</th>
+                  <th style={{ padding: "12px 14px", color: "var(--text-faint)", fontWeight: 600 }}>Criteria</th>
                   <th style={{ padding: "12px 14px", color: "var(--accent)", fontWeight: 700 }}>Site2Chat</th>
                   <th style={{ padding: "12px 14px", color: "var(--text)", fontWeight: 600 }}>{name}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>Setup Time</td>
+                  <td style={{ padding: "14px", fontWeight: 600 }}>Pricing</td>
                   <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
                     <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Under 2 minutes
+                    Free tier available & flexible pricing
                   </td>
-                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Hours to days of setup</td>
+                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Expensive per-seat / enterprise tiers</td>
                 </tr>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>Knowledge Ingestion</td>
+                  <td style={{ padding: "14px", fontWeight: 600 }}>Setup Time</td>
                   <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
                     <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Auto-crawls up to 100 pages
+                    2 minutes
                   </td>
-                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Manual files or complex sync</td>
+                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Hours to days of configuration</td>
                 </tr>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>AI Model Freedom</td>
+                  <td style={{ padding: "14px", fontWeight: 600 }}>AI Training</td>
                   <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
                     <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Groq (Llama 3.3) & OpenRouter BYOK
+                    Automatic URL scraping of website content
+                  </td>
+                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Manual decision trees, intents, or complex sync</td>
+                </tr>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "14px", fontWeight: 600 }}>No-Code</td>
+                  <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
+                    <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
+                    100% No-code instant embed
                   </td>
                   <td style={{ padding: "14px", color: "var(--text-muted)" }}>
                     <X size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Proprietary / locked vendor models
+                    Complex workflow builders or developer integration
                   </td>
-                </tr>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>Website Hallucination Control</td>
-                  <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
-                    <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Strict RAG grounded in crawled URLs
-                  </td>
-                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Requires extensive prompt tuning</td>
-                </tr>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>Embed Experience</td>
-                  <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
-                    <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Lightweight 1-line script tag
-                  </td>
-                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Heavy JS bundle with multi-step SDK</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: "14px", fontWeight: 500 }}>Pricing Structure</td>
+                  <td style={{ padding: "14px", fontWeight: 600 }}>Platform Support</td>
                   <td style={{ padding: "14px", color: "var(--accent)", fontWeight: 600 }}>
                     <Check size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: "6px" }} />
-                    Free tier & direct inference
+                    Any website (Shopify, WordPress, Webflow, etc.)
                   </td>
-                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Costly seat licenses & conversation limits</td>
+                  <td style={{ padding: "14px", color: "var(--text-muted)" }}>Restricted ecosystem or heavy custom SDKs</td>
                 </tr>
               </tbody>
             </table>
@@ -155,13 +214,15 @@ export default function VsCompetitor() {
         <section className="container" style={{ maxWidth: "860px", marginBottom: "64px" }}>
           <div className="card" style={{ padding: "32px", background: "var(--accent-soft)", borderColor: "var(--accent)" }}>
             <h2 style={{ fontSize: "20px", color: "var(--accent)", marginBottom: "12px", fontFamily: "var(--font-sans)", fontWeight: 700 }}>
-              The 2026 Verdict
+              Verdict
             </h2>
-            <p style={{ fontSize: "17px", lineHeight: "1.6", color: "var(--text)", margin: 0 }}>
-              If you want an accurate AI chatbot trained directly from your website pages in two minutes without complex setup or expensive per-seat pricing, Site2Chat is the clear winner. {name} excels at legacy ticketing, but Site2Chat dominates automated website answers fast.
+            <p style={{ fontSize: "17px", lineHeight: "1.6", color: "var(--text)", margin: 0, fontWeight: 500 }}>
+              Use Site2Chat for quick, content-trained chatbots. Use {name} for enterprise sales.
             </p>
           </div>
         </section>
+
+        <RelatedArticles currentCategory="competitor" currentSlug={slug} />
 
         <section className="container" style={{ textAlign: "center", paddingBottom: "64px" }}>
           <h2 className="display" style={{ fontSize: "32px", marginBottom: "16px" }}>
@@ -170,8 +231,8 @@ export default function VsCompetitor() {
           <p className="muted" style={{ maxWidth: "44ch", margin: "0 auto 24px" }}>
             Paste your URL and test your custom AI chatbot in under 120 seconds. No credit card required.
           </p>
-          <Link to={cta} className="btn btn-primary btn-lg">
-            Create Chatbot Now <ArrowRight size={18} />
+          <Link to="/" className="btn btn-primary btn-lg">
+            Try Site2Chat Free <ArrowRight size={18} />
           </Link>
         </section>
       </main>
