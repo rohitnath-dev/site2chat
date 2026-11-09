@@ -34,6 +34,22 @@ export function Footer() {
           </span>
           <span>AI answers can be wrong. Check anything important.</span>
         </div>
+        <div className="mt-8 flex justify-center pb-4">
+          <a 
+            href="https://megalaun.ch/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block transition-opacity hover:opacity-80"
+          >
+            <img 
+              src="https://megalaun.ch/badges/featured/asset" 
+              alt="Featured on MegaLaunch" 
+              width="220" 
+              height="64" 
+              style={{ width: 'auto', height: '50px' }} 
+            />
+          </a>
+        </div>
       </div>
     </footer>
   );
