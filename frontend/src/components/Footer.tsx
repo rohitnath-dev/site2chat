@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ExternalLink, Rocket } from "lucide-react";
 import { Brand } from "./ui";
 import { OPERATOR_NAME } from "../lib/site";
 
@@ -29,26 +30,23 @@ export function Footer() {
           </nav>
         </div>
         <div className="footer-base">
-          <span>
+          <span className="footer-copy">
             © {year} Site2Chat{OPERATOR_NAME ? ` · operated by ${OPERATOR_NAME}` : ""}
           </span>
-          <span>AI answers can be wrong. Check anything important.</span>
-        </div>
-        <div className="mt-8 flex justify-center pb-4">
-          <a 
-            href="https://megalaun.ch/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="inline-block transition-opacity hover:opacity-80"
+          <a
+            href="https://megalaun.ch/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-badge"
+            aria-label="Featured on MegaLaunch (opens in a new tab)"
           >
-            <img 
-              src="https://megalaun.ch/badges/featured/asset" 
-              alt="Featured on MegaLaunch" 
-              width="220" 
-              height="64" 
-              style={{ width: 'auto', height: '50px' }} 
-            />
+            <Rocket size={16} aria-hidden="true" />
+            <span>
+              Featured on <strong>MegaLaunch</strong>
+            </span>
+            <ExternalLink size={13} aria-hidden="true" />
           </a>
+          <span className="footer-note">AI answers can be wrong. Check anything important.</span>
         </div>
       </div>
     </footer>
